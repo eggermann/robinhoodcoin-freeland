@@ -15,7 +15,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { connection } from "../shared/config.js";
+import { connection, PAYPAL } from "../shared/config.js";
 import { CHARTER } from "../shared/charter.js";
 import { listProposals } from "../dao/governance.js";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
@@ -62,6 +62,11 @@ export interface TransparencyReport {
       landAcquisition: { target: number; actual: number };
       charitableCauses: { target: number; actual: number };
       operations: { target: number; actual: number };
+      operationsBreakdown?: {
+        paypalMaintenance: { shareOfOperations: number };
+        remainder: { shareOfOperations: number };
+        paypalShareOfTotal: number;
+      };
     };
     totalRaised: number;
     totalSpent: number;
@@ -118,6 +123,7 @@ export async function generateReport(
   communityMetrics?: CommunityMetrics,
 ): Promise<TransparencyReport> {
   ensureDir();
+  const paypalShare = Math.max(0, Math.min(1, PAYPAL.operationsShare));
 
   // Treasury snapshot
   let treasurySnapshot: TreasurySnapshot = {
@@ -171,6 +177,15 @@ export async function generateReport(
         operations: {
           target: CHARTER.treasury.operations,
           actual: 0,
+        },
+        operationsBreakdown: {
+          paypalMaintenance: {
+            shareOfOperations: paypalShare,
+          },
+          remainder: {
+            shareOfOperations: 1 - paypalShare,
+          },
+          paypalShareOfTotal: CHARTER.treasury.operations * paypalShare,
         },
       },
       totalRaised: 0, // TODO: sum all incoming transactions
@@ -233,6 +248,13 @@ Generated: ${new Date(report.generatedAt).toLocaleDateString()}
 | 🌿 Land Acquisition | ${(t.allocation.landAcquisition.target * 100).toFixed(0)}% | ${(t.allocation.landAcquisition.actual * 100).toFixed(0)}% |
 | 🤝 Charitable Causes | ${(t.allocation.charitableCauses.target * 100).toFixed(0)}% | ${(t.allocation.charitableCauses.actual * 100).toFixed(0)}% |
 | ⚙️ Operations | ${(t.allocation.operations.target * 100).toFixed(0)}% | ${(t.allocation.operations.actual * 100).toFixed(0)}% |
+
+### Operations Split (Maintenance Rule)
+
+| Item | Share of Operations | Share of Total | Destination |
+|------|--------------------:|---------------:|------------|
+| 🧾 PayPal Maintenance | ${(((t.allocation.operationsBreakdown?.paypalMaintenance.shareOfOperations ?? 0.4) * 100)).toFixed(0)}% | ${(((t.allocation.operationsBreakdown?.paypalShareOfTotal ?? 0.04) * 100)).toFixed(0)}% | *(hidden; env-configured)* |
+| ⚙️ Remaining Ops | ${(((t.allocation.operationsBreakdown?.remainder.shareOfOperations ?? 0.6) * 100)).toFixed(0)}% | ${((t.allocation.operations.target * (t.allocation.operationsBreakdown?.remainder.shareOfOperations ?? 0.6) * 100)).toFixed(0)}% | hosting/legal/dev/etc. |
 
 ---
 

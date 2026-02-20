@@ -21,7 +21,7 @@
  */
 
 import { Bot, Context, session, type SessionFlavor } from "grammy";
-import { TELEGRAM } from "../shared/config.js";
+import { TELEGRAM, assertSecrets } from "../shared/config.js";
 
 // ── Command Handlers ─────────────────────────────────────
 import { handleStart } from "./commands/start.js";
@@ -64,6 +64,8 @@ type BotContext = Context & SessionFlavor<SessionData>;
 // ── Boot ─────────────────────────────────────────────────
 
 function main() {
+  assertSecrets();
+
   if (!TELEGRAM.botToken) {
     console.error("❌ TELEGRAM_BOT_TOKEN is not set. Check your .env file.");
     process.exit(1);

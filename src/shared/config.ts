@@ -59,3 +59,19 @@ export const AI = {
   apiKey: process.env.AI_API_KEY ?? "",
   model: process.env.AI_MODEL ?? defaultAiModel,
 } as const;
+
+// ── PayPal / Operations split ───────────────────────────
+// Rule: From the 10% operations budget, 40% must be paid into PayPal.
+// => 0.10 * 0.40 = 0.04 (4%) of total inflows, conceptually earmarked.
+export const PAYPAL = {
+  // Secret: MUST come from .env. Do not hardcode or display publicly.
+  receiver: process.env.PAYPAL_RECEIVER,
+  // Share of the OPERATIONS bucket (not of total)
+  operationsShare: Number(process.env.OPERATIONS_PAYPAL_SHARE ?? "0.4"),
+} as const;
+
+export function assertSecrets(): void {
+  if (!PAYPAL.receiver) {
+    throw new Error("Missing PAYPAL_RECEIVER in environment (.env).");
+  }
+}

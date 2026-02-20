@@ -1,0 +1,23 @@
+{
+  "name": "Freeland Stamps — Genesis Collection",
+  "symbol": "FSTAMP",
+  "description": "The official NFT collection of the RobinHoodCoin Freeland initiative. Each stamp represents a contribution toward buying real land for community commons.",
+  "image": "https://robinhoodcoin.org/assets/collection-banner.png",
+  "external_url": "https://robinhoodcoin.org",
+  "seller_fee_basis_points": 0,
+  "properties": {
+    "category": "image",
+    "creators": [
+      {
+        "address": "YOUR_DEPLOYER_PUBLIC_KEY",
+        "share": 100
+      }
+    ],
+    "files": [
+      {
+        "uri": "https://robinhoodcoin.org/assets/collection-banner.png",
+        "type": "image/png"
+      }
+    ]
+  }
+}

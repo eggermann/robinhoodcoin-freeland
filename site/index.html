@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RobinHoodCoin — Create Freedom, One Parcel at a Time</title>
+  <meta name="description" content="A crypto-powered collective buying real land for communities. Join the Robin Hood Clan. DAO governance, NFT stamps, communal land." />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏹</text></svg>" />
+</head>
+<body>
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- HERO                                                -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <header class="hero">
+    <nav class="nav container">
+      <a href="#" class="nav__logo">🏹 RobinHoodCoin</a>
+      <div class="nav__links">
+        <a href="#mission">Mission</a>
+        <a href="#how">How</a>
+        <a href="#stamps">Stamps</a>
+        <a href="#portfolio">Portfolio</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#soul">Soul</a>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="hero__badge">🏹 RobinHoodCoin — Freeland Initiative</div>
+      <h1 class="hero__title">Create Freedom.<br/>One Parcel at a Time.</h1>
+      <p class="hero__sub">
+        A crypto-powered collective buying <strong>real land</strong> for communities.
+        Governed by the people who fund it. Transparent. Decentralized. Unstoppable.
+      </p>
+      <p class="hero__quote">
+        <em>"We 'rob' no one. We invite everyone to voluntarily pool resources into a shared pot, which secures liberties and opportunities for many."</em>
+      </p>
+      <div class="hero__actions">
+        <a href="#stamps" class="btn btn--primary">Buy a Freeland Stamp</a>
+        <a href="#mission" class="btn btn--outline">Read the Charter</a>
+        <a href="https://t.me/robinhoodcoin" class="btn btn--outline" target="_blank">Join Telegram</a>
+      </div>
+      <div class="hero__stats">
+        <div class="stat">
+          <span class="stat__value" id="stat-raised">—</span>
+          <span class="stat__label">SOL Raised</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value" id="stat-holders">—</span>
+          <span class="stat__label">Clan Members</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value" id="stat-parcels">0</span>
+          <span class="stat__label">Parcels Acquired</span>
+        </div>
+        <div class="stat">
+          <span class="stat__value" id="stat-stamps">—</span>
+          <span class="stat__label">Stamps Minted</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- MISSION & CHARTER                                    -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="mission" class="section">
+    <div class="container">
+      <h2 class="section__title">The Mission</h2>
+      <p class="section__sub">
+        Inspired by the legend of Robin Hood — not as a thief, but as someone who reclaims resources from unjust concentration and returns them to the people.
+      </p>
+      <div class="mission-grid">
+        <div class="card">
+          <div class="card__icon">🌿</div>
+          <h3>Acquire Freeland</h3>
+          <p>
+            Purchase real land and designate it as self-governed, community-run zones —
+            modern commons where people can live, gather, and create without the barriers
+            of private ownership. Each parcel is permanently removed from the speculative market.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card__icon">🤝</div>
+          <h3>Support Robin Hood Causes</h3>
+          <p>
+            Allocate 20% of funds to charitable and social projects — helping the underprivileged,
+            funding grassroots initiatives, echoing "take from the rich, give to the poor."
+          </p>
+        </div>
+        <div class="card">
+          <div class="card__icon">🗳️</div>
+          <h3>DAO Governance</h3>
+          <p>
+            RHC holders vote on every decision: which land to buy, which cause to support,
+            how to manage each parcel. True democracy, powered by blockchain. Multisig treasury
+            ensures no single person can misuse funds.
+          </p>
+        </div>
+      </div>
+
+      <!-- Charter Principles -->
+      <div class="charter">
+        <h3>📜 The Charter — Laws of Robin Hood Coin</h3>
+        <ol class="charter__list">
+          <li>All funds raised must be used exclusively for buying communal land or supporting Robin Hood-like charitable causes.</li>
+          <li>Every acquired parcel is permanently removed from the speculative market — it can never be resold for private profit.</li>
+          <li>Decisions are made democratically by RHC token holders. No single entity controls the treasury.</li>
+          <li>Full transparency: every contribution, expenditure, and decision is publicly trackable on-chain.</li>
+          <li>The project operates in the spirit of Robin Hood: redistribute wealth toward the common good.</li>
+          <li>Each freeland parcel is self-governed by its local community, with strategic oversight by the DAO.</li>
+          <li>Violence, exclusion, and discrimination have no place in any freeland space.</li>
+          <li>The AI Soul serves the mission, not individual interests. It propagates collective liberation.</li>
+        </ol>
+      </div>
+
+      <!-- Fund Allocation -->
+      <div class="allocation">
+        <h3>💰 Fund Allocation</h3>
+        <div class="allocation__bars">
+          <div class="alloc-bar">
+            <div class="alloc-bar__label">🌿 Land Acquisition</div>
+            <div class="alloc-bar__track"><div class="alloc-bar__fill alloc-bar__fill--land" style="width:70%"></div></div>
+            <div class="alloc-bar__pct">70%</div>
+          </div>
+          <div class="alloc-bar">
+            <div class="alloc-bar__label">🤝 Charitable Causes</div>
+            <div class="alloc-bar__track"><div class="alloc-bar__fill alloc-bar__fill--charity" style="width:20%"></div></div>
+            <div class="alloc-bar__pct">20%</div>
+          </div>
+          <div class="alloc-bar">
+            <div class="alloc-bar__label">⚙️ Operations</div>
+            <div class="alloc-bar__track"><div class="alloc-bar__fill alloc-bar__fill--ops" style="width:10%"></div></div>
+            <div class="alloc-bar__pct">10%</div>
+          </div>
+        </div>
+        <p class="allocation__note">Treasury expenditures require multisig approval. Land purchases above 10,000 SOL require a full DAO vote.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- WHAT IS FREELAND                                    -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section class="section section--alt">
+    <div class="container">
+      <h2 class="section__title">What Is Freeland?</h2>
+      <p class="section__sub">
+        Freeland is real, physical land purchased by the Robin Hood DAO and designated as a self-governed community commons.
+      </p>
+      <div class="uses-grid">
+        <div class="use-card">🏡<br/>Community Living</div>
+        <div class="use-card">🌾<br/>Urban & Rural Farming</div>
+        <div class="use-card">🔧<br/>Hacker Spaces & Maker Labs</div>
+        <div class="use-card">🏛️<br/>Community Centers</div>
+        <div class="use-card">🌳<br/>Nature Conservation</div>
+        <div class="use-card">🏥<br/>Emergency Shelter & Mutual Aid</div>
+      </div>
+      <p class="section__note">Each parcel has a local "Merry Men council" for daily governance, with the DAO ensuring alignment with the charter.</p>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- HOW IT WORKS                                        -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="how" class="section">
+    <div class="container">
+      <h2 class="section__title">How It Works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step__num">1</div>
+          <h3>Get RHC or a Freeland Stamp</h3>
+          <p>Buy RobinHoodCoin (RHC) for governance power, or a Freeland Stamp NFT to fund a specific land campaign. RHC can also be earned by volunteering time or skills.</p>
+        </div>
+        <div class="step">
+          <div class="step__num">2</div>
+          <h3>Vote on Proposals</h3>
+          <p>The community proposes land targets and causes. RHC holders vote. Majority decides. Use our Telegram bot: <code>/propose</code> and <code>/vote</code>.</p>
+        </div>
+        <div class="step">
+          <div class="step__num">3</div>
+          <h3>Land Is Acquired</h3>
+          <p>Treasury funds are released via multisig. A legal entity (LLC or foundation) holds the deed on behalf of the DAO. Full transparency on-chain.</p>
+        </div>
+        <div class="step">
+          <div class="step__num">4</div>
+          <h3>Community Thrives</h3>
+          <p>The land becomes a self-governed community space. Local participants form a council. The AI Soul helps coordinate events, maintenance, and outreach.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- FREELAND STAMPS & TIERS                              -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="stamps" class="section section--alt">
+    <div class="container">
+      <h2 class="section__title">Freeland Stamps</h2>
+      <p class="section__sub">
+        Collectible NFTs that fund freedom. Each stamp is a badge of contribution —
+        proof that you helped buy land for the commons.
+      </p>
+
+      <!-- Tier Cards -->
+      <div class="stamps-grid">
+        <div class="stamp-card stamp-card--genesis">
+          <div class="stamp-card__badge">LIMITED</div>
+          <div class="stamp-card__img">⚔️</div>
+          <h4>Genesis Stamp</h4>
+          <p>First 1,000 stamps. Founding members.</p>
+          <ul class="stamp-card__benefits">
+            <li>Founding member badge</li>
+            <li>Early access to all drops</li>
+            <li>Vote weight bonus</li>
+            <li>Genesis Wall inscription</li>
+          </ul>
+          <span class="stamp-card__price">1 SOL</span>
+          <div class="stamp-card__supply">0 / 1,000 minted</div>
+          <button class="btn btn--primary btn--sm" disabled>Coming Soon</button>
+        </div>
+        <div class="stamp-card">
+          <div class="stamp-card__img">🌾</div>
+          <h4>Supporter Stamp</h4>
+          <p>Affordable support for anyone.</p>
+          <ul class="stamp-card__benefits">
+            <li>Proof of contribution</li>
+            <li>Supporters-only channel</li>
+            <li>Monthly transparency reports</li>
+          </ul>
+          <span class="stamp-card__price">0.5 SOL</span>
+          <div class="stamp-card__supply">Unlimited</div>
+          <button class="btn btn--primary btn--sm" disabled>Coming Soon</button>
+        </div>
+        <div class="stamp-card">
+          <div class="stamp-card__img">🏔️</div>
+          <h4>Parcel Stamp</h4>
+          <p>Fund a specific land purchase.</p>
+          <ul class="stamp-card__benefits">
+            <li>Direct contribution to a parcel</li>
+            <li>Unique AI-generated artwork</li>
+            <li>Voting priority on that parcel</li>
+          </ul>
+          <span class="stamp-card__price">2 SOL</span>
+          <div class="stamp-card__supply">500 per campaign</div>
+          <button class="btn btn--primary btn--sm" disabled>Coming Soon</button>
+        </div>
+        <div class="stamp-card stamp-card--patron">
+          <div class="stamp-card__badge">PATRON</div>
+          <div class="stamp-card__img">👑</div>
+          <h4>Patron Stamp</h4>
+          <p>Major supporters & advisors.</p>
+          <ul class="stamp-card__benefits">
+            <li>All lower-tier benefits</li>
+            <li>Enhanced vote weight</li>
+            <li>Advisory seat on council</li>
+            <li>Patron Wall feature</li>
+          </ul>
+          <span class="stamp-card__price">10 SOL</span>
+          <div class="stamp-card__supply">0 / 100 minted</div>
+          <button class="btn btn--primary btn--sm" disabled>Coming Soon</button>
+        </div>
+      </div>
+
+      <!-- Active Campaign Progress -->
+      <div class="campaign-section" id="campaigns">
+        <h3>📊 Active Campaigns</h3>
+        <div class="campaign-card">
+          <h4>Genesis Stamp — Founding Collection</h4>
+          <p>Seed the treasury and become a founding member of the Robin Hood Clan.</p>
+          <div class="progress-bar">
+            <div class="progress-bar__fill" style="width: 0%"></div>
+          </div>
+          <div class="progress-stats">
+            <span>0 / 1,000 minted</span>
+            <span>0 / 1,000 SOL raised</span>
+            <span>0% funded</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- PORTFOLIO — FREELAND PARCELS                        -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="portfolio" class="section">
+    <div class="container">
+      <h2 class="section__title">Freeland Portfolio</h2>
+      <p class="section__sub">
+        Every parcel acquired by the DAO. Transparent. Verifiable. Forever free.
+      </p>
+
+      <!-- Map placeholder -->
+      <div class="portfolio-map" id="portfolio-map">
+        <div class="portfolio-map__placeholder">
+          🗺️ Interactive map coming soon — showing all freeland parcels worldwide
+        </div>
+      </div>
+
+      <!-- No parcels yet state -->
+      <div class="portfolio-empty" id="portfolio-empty">
+        <div class="portfolio-empty__icon">🌱</div>
+        <h3>The journey begins</h3>
+        <p>No parcels acquired yet. Buy a Freeland Stamp to help fund the first acquisition!</p>
+        <a href="#stamps" class="btn btn--primary">Fund Parcel #1</a>
+      </div>
+
+      <!-- Future parcel cards will appear here -->
+      <div class="portfolio-grid" id="portfolio-grid"></div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- PRECEDENTS                                           -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section class="section section--alt">
+    <div class="container">
+      <h2 class="section__title">It's Already Happening</h2>
+      <p class="section__sub">Real-world precedents prove that decentralized communities can own land and mobilize capital.</p>
+      <div class="mission-grid">
+        <div class="card">
+          <div class="card__icon">🏙️</div>
+          <h3>CityDAO</h3>
+          <p>Pooled <strong>$8M+</strong> from 5,000+ people to purchase <strong>40 acres</strong> in Wyoming — the first time a DAO legally acquired real land.</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">📜</div>
+          <h3>ConstitutionDAO</h3>
+          <p>Crowdfunded <strong>$47 million</strong> in Ether in one week, demonstrating "the power of the DAO to change the way people share resources."</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">🏘️</div>
+          <h3>Community Land Trusts</h3>
+          <p>Hundreds operating worldwide since the 1960s — proving non-speculative communal land ownership is legally viable and sustainable.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- THE SOUL — AI NETWORK                                -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="soul" class="section">
+    <div class="container">
+      <h2 class="section__title">The Soul — AI Network</h2>
+      <p class="section__sub">
+        Our AI assistant isn't just a chatbot — it's the digital heart of the project.
+        A federation of specialized agents working together for Freeland.
+      </p>
+      <div class="soul-grid">
+        <div class="card">
+          <div class="card__icon">🧠</div>
+          <h3>Soul Prime</h3>
+          <p>The primary coordinator. Answers questions, delegates tasks, ensures every agent stays aligned with the charter.</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">💰</div>
+          <h3>Marian (Finance)</h3>
+          <p>Monitors the treasury, tracks allocations, generates financial reports, and alerts on large transactions.</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">🏞️</div>
+          <h3>Little John (Land Scout)</h3>
+          <p>Searches for land opportunities, evaluates properties, compiles shortlists for DAO votes.</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">📢</div>
+          <h3>Will Scarlet (PR)</h3>
+          <p>Creates content, manages social media, drafts announcements, and tracks community sentiment.</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">🍻</div>
+          <h3>Friar Tuck (Moderator)</h3>
+          <p>Welcomes new members, answers FAQs, moderates discussions, and organizes community events.</p>
+        </div>
+        <div class="card">
+          <div class="card__icon">🎵</div>
+          <h3>Allan-a-Dale (Governance)</h3>
+          <p>Manages proposals, coordinates voting, ensures alignment with the charter, produces governance reports.</p>
+        </div>
+      </div>
+
+      <div class="soul-propagation">
+        <h3>🌱 Idea Propagation</h3>
+        <p>
+          The Soul doesn't just serve — it <strong>spreads the idea</strong>. Every interaction is an opportunity
+          to plant a seed. The Soul's charter, prompts, and configurations are <strong>open source</strong>,
+          allowing anyone to spawn their own Robin Hood AI node and join the network.
+        </p>
+        <p>
+          Like Robin Hood recruiting Merry Men, the Soul recruits allied AI agents across platforms —
+          Telegram, Discord, Slack, and beyond. A federation of bots, all sharing the same values,
+          all working toward Freeland.
+        </p>
+        <a href="https://github.com/robinhoodcoin" class="btn btn--outline" target="_blank">Get the Blueprint</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- ROADMAP                                             -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="roadmap" class="section section--alt">
+    <div class="container">
+      <h2 class="section__title">Roadmap</h2>
+      <div class="timeline">
+        <div class="timeline__item timeline__item--done">
+          <div class="timeline__dot"></div>
+          <div class="timeline__content">
+            <h4>Phase 1 — Foundation</h4>
+            <ul>
+              <li>✅ Core team assembly & charter drafting</li>
+              <li>✅ AI Soul bot deployment (Telegram)</li>
+              <li>✅ RHC token creation (Solana SPL)</li>
+              <li>✅ Multisig treasury setup (Squads v4)</li>
+              <li>✅ Website launch</li>
+            </ul>
+          </div>
+        </div>
+        <div class="timeline__item timeline__item--active">
+          <div class="timeline__dot"></div>
+          <div class="timeline__content">
+            <h4>Phase 2 — Launch & Outreach</h4>
+            <ul>
+              <li>🔄 Genesis Stamp NFT sale (1,000 founding stamps)</li>
+              <li>🔄 Community outreach (Twitter, Reddit, crypto forums)</li>
+              <li>⏳ AMA sessions and press coverage</li>
+              <li>⏳ Airdrop RHC to early contributors</li>
+              <li>⏳ Discord & multi-platform bot deployment</li>
+            </ul>
+          </div>
+        </div>
+        <div class="timeline__item">
+          <div class="timeline__dot"></div>
+          <div class="timeline__content">
+            <h4>Phase 3 — First Acquisition</h4>
+            <ul>
+              <li>Scout land opportunities via Little John agent</li>
+              <li>Community vote on target property</li>
+              <li>Legal entity setup (LLC or foundation)</li>
+              <li>Execute purchase via multisig</li>
+              <li>Announce Freeland Parcel #1</li>
+            </ul>
+          </div>
+        </div>
+        <div class="timeline__item">
+          <div class="timeline__dot"></div>
+          <div class="timeline__content">
+            <h4>Phase 4 — Develop & Celebrate</h4>
+            <ul>
+              <li>Build infrastructure on the parcel</li>
+              <li>Form local Merry Men council</li>
+              <li>Open community workdays & events</li>
+              <li>Document with photos, video, and reports</li>
+            </ul>
+          </div>
+        </div>
+        <div class="timeline__item">
+          <div class="timeline__dot"></div>
+          <div class="timeline__content">
+            <h4>Phase 5 — Scale</h4>
+            <ul>
+              <li>Launch Parcel #2 campaign</li>
+              <li>Partner with aligned DAOs & land trusts</li>
+              <li>Expand Soul network to new platforms</li>
+              <li>Decentralized identity ("Robin Hood Passport")</li>
+              <li>Global network of freeland nodes</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- TRANSPARENCY                                        -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section id="transparency" class="section">
+    <div class="container">
+      <h2 class="section__title">Transparency</h2>
+      <p class="section__sub">Every coin, every stamp, every decision — on-chain and verifiable.</p>
+      <div class="transparency-grid">
+        <div class="card">
+          <h4>🪙 RHC Token</h4>
+          <p class="mono" id="token-address">Deploy pending</p>
+          <small>Solana SPL Token — 1B supply, 9 decimals</small>
+        </div>
+        <div class="card">
+          <h4>🏦 Treasury Vault</h4>
+          <p class="mono" id="treasury-address">Deploy pending</p>
+          <small>Squads v4 Multisig — 2-of-3 threshold</small>
+        </div>
+        <div class="card">
+          <h4>🎨 NFT Collection</h4>
+          <p class="mono" id="nft-address">Deploy pending</p>
+          <small>Metaplex — Freeland Stamps</small>
+        </div>
+      </div>
+      <div class="transparency-reports">
+        <h3>📊 Reports</h3>
+        <p>Monthly transparency reports auto-generated by the Soul. Each report covers treasury balance, fund allocation, governance activity, and portfolio status.</p>
+        <p><em>First report will be published after the Genesis Stamp campaign launches.</em></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- JOIN                                                -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <section class="section section--cta">
+    <div class="container">
+      <h2 class="section__title">Join the Clan</h2>
+      <p class="section__sub">
+        Every member matters. Every coin moves us closer to freedom.
+        Whether you contribute funds, skills, or just spread the word — you're Robin Hood.
+      </p>
+      <div class="hero__actions">
+        <a href="https://t.me/robinhoodcoin" class="btn btn--primary" target="_blank">🏹 Join Telegram</a>
+        <a href="https://discord.gg/robinhoodcoin" class="btn btn--outline" target="_blank">💬 Join Discord</a>
+        <a href="https://github.com/robinhoodcoin" class="btn btn--outline" target="_blank">💻 Contribute Code</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- FOOTER                                              -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <h4>🏹 RobinHoodCoin</h4>
+          <p>Creating freedom through collective action and decentralized technology. A modern Sherwood Forest scattered across the globe.</p>
+        </div>
+        <div>
+          <h4>Community</h4>
+          <ul>
+            <li><a href="https://t.me/robinhoodcoin" target="_blank">Telegram</a></li>
+            <li><a href="https://discord.gg/robinhoodcoin" target="_blank">Discord</a></li>
+            <li><a href="https://twitter.com/robinhoodcoin" target="_blank">Twitter</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#mission">Charter</a></li>
+            <li><a href="#roadmap">Roadmap</a></li>
+            <li><a href="#transparency">Transparency</a></li>
+            <li><a href="https://github.com/robinhoodcoin" target="_blank">GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>The Soul Bot</h4>
+          <ul>
+            <li><a href="https://t.me/RobinHoodCoinBot" target="_blank">Talk to Soul</a></li>
+            <li><a href="https://github.com/robinhoodcoin" target="_blank">Deploy Your Own</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="footer__copy">
+        &copy; 2025 RobinHoodCoin DAO. No rights reserved — this is for everyone.<br/>
+        <em>"The forest grows one tree at a time." 🌿🏹</em>
+      </p>
+    </div>
+  </footer>
+
+  <script src="./main.js" type="module"></script>
+</body>
+</html>

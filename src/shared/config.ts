@@ -48,6 +48,14 @@ export const TELEGRAM = {
   botToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
 } as const;
 
+// ── Bot runtime config ──────────────────────────────────
+export const BOT = {
+  adminIds: (process.env.BOT_ADMIN_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
+} as const;
+
 // ── AI config ────────────────────────────────────────────
 const aiProvider = (process.env.AI_PROVIDER ?? "anthropic").toLowerCase();
 const defaultAiModel = aiProvider === "openai"

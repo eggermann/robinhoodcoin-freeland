@@ -27,6 +27,9 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /remind \`<mins>\` \`<msg>\` — Set a reminder
 /report — Generate transparency report
 /soul — Soul network status
+/opportunities — Top grants, auctions, and sponsorship leads
+/scout — Add a new grant/auction/sponsorship opportunity
+/approveopp \`<OPP-ID>\` — Admin approval: convert opportunity into proposal
 
 *── AI Q&A ──*
 💬 Just *ask me anything* in a DM or mention @RobinHoodCoinBot in a group.

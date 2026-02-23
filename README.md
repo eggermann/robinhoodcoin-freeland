@@ -27,7 +27,7 @@ robinhoodcoin-freeland/
 │   │       ├── help.ts        # /help — command list
 │   │       ├── mission.ts     # /mission — project vision
 │   │       ├── treasury.ts    # /treasury — live balance query
-│   │       └── ask.ts         # Free-text AI Q&A (Anthropic API)
+│   │       └── ask.ts         # Free-text AI Q&A (Anthropic/OpenAI/OpenClaw)
 │   ├── dao/
 │   │   └── governance.ts      # Off-chain proposal & voting system
 │   └── treasury/
@@ -120,13 +120,15 @@ Each stamp is minted as an NFT within the collection. Artwork should be generate
 
 ## 🤖 Telegram Bot (OpenClaw)
 
-The bot uses [grammY](https://grammy.dev/) and supports Anthropic or OpenAI for AI-powered Q&A.
+The bot uses [grammY](https://grammy.dev/) and supports Anthropic, OpenAI, or an OpenClaw gateway for AI-powered Q&A.
 
 ### Setup
 
 1. Create a bot via [@BotFather](https://t.me/botfather) on Telegram
 2. Set `TELEGRAM_BOT_TOKEN` in `.env`
-3. Set `AI_PROVIDER` (`anthropic` or `openai`) and `AI_API_KEY` in `.env`
+3. Set `AI_PROVIDER` (`anthropic`, `openai`, or `openclaw`) in `.env`
+4. For `anthropic`/`openai`, set `AI_API_KEY`
+5. For `openclaw`, set `OPENCLAW_GATEWAY_URL` and gateway token/password if auth is enabled
 
 ### Run
 

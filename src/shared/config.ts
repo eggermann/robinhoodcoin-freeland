@@ -65,12 +65,28 @@ export const BOT = {
 const aiProvider = (process.env.AI_PROVIDER ?? "anthropic").toLowerCase();
 const defaultAiModel = aiProvider === "openai"
   ? "gpt-4.1-mini"
-  : "claude-sonnet-4-20250514";
+  : aiProvider === "openclaw"
+    ? "openclaw"
+    : "claude-sonnet-4-20250514";
 
 export const AI = {
   provider: aiProvider,
   apiKey: process.env.AI_API_KEY ?? "",
   model: process.env.AI_MODEL ?? defaultAiModel,
+} as const;
+
+// ── OpenClaw gateway config ──────────────────────────────
+export const OPENCLAW = {
+  gatewayUrl: process.env.OPENCLAW_GATEWAY_URL ?? "http://127.0.0.1:18789",
+  bearerToken:
+    process.env.OPENCLAW_GATEWAY_TOKEN
+    ?? process.env.OPENCLAW_GATEWAY_PASSWORD
+    ?? "",
+  agentId: process.env.OPENCLAW_AGENT_ID ?? "main",
+  model: process.env.OPENCLAW_MODEL ?? "openclaw",
+  chatCompletionsPath:
+    process.env.OPENCLAW_CHAT_COMPLETIONS_PATH ?? "/v1/chat/completions",
+  timeoutMs: Number(process.env.OPENCLAW_TIMEOUT_MS ?? "60000"),
 } as const;
 
 // ── File-based memory config ─────────────────────────────

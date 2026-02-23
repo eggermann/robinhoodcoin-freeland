@@ -73,6 +73,15 @@ export const AI = {
   model: process.env.AI_MODEL ?? defaultAiModel,
 } as const;
 
+// ── File-based memory config ─────────────────────────────
+export const MEMORY = {
+  enabled: (process.env.BOT_MEMORY_ENABLED ?? "true").toLowerCase() !== "false",
+  dir: process.env.BOT_MEMORY_DIR ?? "./data/memory",
+  maxRecallResults: Number(process.env.BOT_MEMORY_MAX_RECALL_RESULTS ?? "8"),
+  recentFactsCount: Number(process.env.BOT_MEMORY_RECENT_FACTS_COUNT ?? "4"),
+  maxEntriesPerScope: Number(process.env.BOT_MEMORY_MAX_ENTRIES_PER_SCOPE ?? "500"),
+} as const;
+
 // ── PayPal / Operations split ───────────────────────────
 // Rule: From the 10% operations budget, 40% must be paid into PayPal.
 // => 0.10 * 0.40 = 0.04 (4%) of total inflows, conceptually earmarked.

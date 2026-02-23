@@ -1,14 +1,194 @@
 import type { Context } from "grammy";
 import { AI } from "../../shared/config.js";
 import { generateSoulPrompt } from "../../shared/charter.js";
+import { queryPropertyOracle } from "../../soul/skills/property-oracle.js";
+import { getTreasuryBalanceSnapshot } from "../../soul/skills/treasury-tracker.js";
 
-/** System prompt generated from the project charter */
-const SYSTEM_PROMPT = generateSoulPrompt();
+const MAX_MODEL_TOOL_LOOPS = 3;
+
+export interface AskMemoryScope {
+  userId: string;
+  chatId: string;
+  chatType: string;
+}
+
+export interface AskMemoryContext {
+  staticFacts: string[];
+  dynamicFacts: string[];
+  relatedMemories: Array<{
+    text: string;
+    similarity?: number;
+    updatedAt?: string;
+  }>;
+}
+
+export interface AskMemoryRetrieveInput {
+  query: string;
+  scope: AskMemoryScope;
+}
+
+export interface AskMemoryCaptureInput {
+  query: string;
+  answer: string;
+  scope: AskMemoryScope;
+}
+
+export type AskMemoryRetrieveFn = (
+  input: AskMemoryRetrieveInput,
+) => Promise<AskMemoryContext | null>;
+
+export type AskMemoryCaptureFn = (
+  input: AskMemoryCaptureInput,
+) => Promise<void>;
+
+let memoryRetrieveFn: AskMemoryRetrieveFn | null = null;
+let memoryCaptureFn: AskMemoryCaptureFn | null = null;
+
+export function configureAskMemory(opts: {
+  retrieve: AskMemoryRetrieveFn;
+  capture?: AskMemoryCaptureFn;
+} | null): void {
+  memoryRetrieveFn = opts?.retrieve ?? null;
+  memoryCaptureFn = opts?.capture ?? null;
+}
+
+interface SkillResult {
+  tool: string;
+  ok: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+interface OpenAIToolCall {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+interface OpenAIMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content?: string | Array<{ type?: string; text?: string }>;
+  tool_calls?: OpenAIToolCall[];
+  tool_call_id?: string;
+}
+
+interface OpenAIResponse {
+  choices?: Array<{
+    message?: OpenAIMessage;
+  }>;
+}
+
+interface AnthropicTextBlock {
+  type: "text";
+  text: string;
+}
+
+interface AnthropicToolUseBlock {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+interface AnthropicToolResultBlock {
+  type: "tool_result";
+  tool_use_id: string;
+  content: string;
+  is_error?: boolean;
+}
+
+type AnthropicContentBlock =
+  | AnthropicTextBlock
+  | AnthropicToolUseBlock
+  | { type: string; [key: string]: unknown };
+
+interface AnthropicMessage {
+  role: "user" | "assistant";
+  content: string | Array<AnthropicContentBlock | AnthropicToolResultBlock>;
+}
+
+interface AnthropicResponse {
+  content: AnthropicContentBlock[];
+}
+
+const OPENAI_TOOLS: Array<Record<string, unknown>> = [
+  {
+    type: "function",
+    function: {
+      name: "property_oracle",
+      description:
+        "Return the current RobinHoodCoin land shortlist from the LandSearchManager.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          query: {
+            type: "string",
+            description: "Optional keyword filter for region, zoning, or property name.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "treasury_tracker",
+      description:
+        "Fetch the live SOL treasury balance for TREASURY_MULTISIG_ADDRESS.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          address: {
+            type: "string",
+            description: "Optional treasury address override.",
+          },
+        },
+      },
+    },
+  },
+];
+
+const ANTHROPIC_TOOLS: Array<Record<string, unknown>> = [
+  {
+    name: "property_oracle",
+    description:
+      "Return the current RobinHoodCoin land shortlist from the LandSearchManager.",
+    input_schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        query: {
+          type: "string",
+          description: "Optional keyword filter for region, zoning, or property name.",
+        },
+      },
+    },
+  },
+  {
+    name: "treasury_tracker",
+    description:
+      "Fetch the live SOL treasury balance for TREASURY_MULTISIG_ADDRESS.",
+    input_schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        address: {
+          type: "string",
+          description: "Optional treasury address override.",
+        },
+      },
+    },
+  },
+];
 
 /**
  * Handle free-text questions by forwarding them to the configured AI provider.
- * The Soul responds with charter-awareness: it knows the laws, the mission,
- * the precedents, and the directive to spread the Freeland idea.
+ * The Soul responds with charter-awareness and tool-driven context.
  */
 export async function handleAsk(ctx: Context, question: string): Promise<void> {
   if (!AI.apiKey) {
@@ -20,8 +200,13 @@ export async function handleAsk(ctx: Context, question: string): Promise<void> {
 
   await ctx.replyWithChatAction("typing");
 
+  const scope = getMemoryScope(ctx);
+  const memory = await recallMemorySafe(question, scope);
+
   try {
-    const answer = await callAI(question);
+    const answer = await callAI(question, memory);
+    await captureMemorySafe({ query: question, answer, scope });
+
     // Telegram has a 4096 char limit
     if (answer.length > 4000) {
       const parts = splitMessage(answer, 4000);
@@ -41,12 +226,49 @@ export async function handleAsk(ctx: Context, question: string): Promise<void> {
   }
 }
 
-async function callAI(userMessage: string): Promise<string> {
+function getMemoryScope(ctx: Context): AskMemoryScope {
+  return {
+    userId: String(ctx.from?.id ?? "unknown-user"),
+    chatId: String(ctx.chat?.id ?? "unknown-chat"),
+    chatType: ctx.chat?.type ?? "unknown-chat-type",
+  };
+}
+
+async function recallMemorySafe(
+  query: string,
+  scope: AskMemoryScope,
+): Promise<AskMemoryContext | null> {
+  if (!memoryRetrieveFn) return null;
+
+  try {
+    return await memoryRetrieveFn({ query, scope });
+  } catch (err) {
+    console.error("Memory recall failed:", err);
+    return null;
+  }
+}
+
+async function captureMemorySafe(input: AskMemoryCaptureInput): Promise<void> {
+  if (!memoryCaptureFn) return;
+
+  try {
+    await memoryCaptureFn(input);
+  } catch (err) {
+    console.error("Memory capture failed:", err);
+  }
+}
+
+async function callAI(
+  userMessage: string,
+  memoryContext: AskMemoryContext | null,
+): Promise<string> {
+  const systemPrompt = buildSystemPrompt(memoryContext);
+
   switch (AI.provider) {
     case "anthropic":
-      return callAnthropic(userMessage);
+      return callAnthropic(userMessage, systemPrompt);
     case "openai":
-      return callOpenAI(userMessage);
+      return callOpenAI(userMessage, systemPrompt);
     default:
       throw new Error(
         `Unsupported AI_PROVIDER="${AI.provider}". Use "anthropic" or "openai".`,
@@ -54,81 +276,276 @@ async function callAI(userMessage: string): Promise<string> {
   }
 }
 
-async function callAnthropic(userMessage: string): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": AI.apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: AI.model,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
-    }),
-  });
+function buildSystemPrompt(memoryContext: AskMemoryContext | null): string {
+  const basePrompt = generateSoulPrompt();
+  const toolsPrompt = `
+═══ AVAILABLE RUNTIME TOOLS ═══
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${body}`);
-  }
+Use these tools when needed to answer factual project-state questions:
 
-  const data = (await res.json()) as {
-    content: Array<{ type: string; text: string }>;
-  };
+1) property_oracle
+- Reads the current shortlist from LandSearchManager.
+- Use when asked about land options, current properties, shortlist status, or parcel comparisons.
 
-  const textBlock = data.content.find((b) => b.type === "text");
-  return textBlock?.text ?? "🤷 No response from AI.";
+2) treasury_tracker
+- Reads live treasury SOL balance from TREASURY_MULTISIG_ADDRESS.
+- Use when asked about available funds, budget feasibility, or treasury status.
+
+Tool usage rules:
+- Prefer tools over guessing current treasury or shortlist state.
+- Use concrete numbers from tool outputs.
+- If tool output reports missing configuration or errors, state that clearly.
+`;
+
+  const memoryPrompt = formatMemoryContext(memoryContext);
+  return [basePrompt, toolsPrompt, memoryPrompt].filter(Boolean).join("\n\n");
 }
 
-async function callOpenAI(userMessage: string): Promise<string> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AI.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: AI.model,
-      max_tokens: 1024,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
-      ],
-    }),
-  });
+function formatMemoryContext(memoryContext: AskMemoryContext | null): string {
+  if (!memoryContext) return "";
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`OpenAI API error ${res.status}: ${body}`);
+  const staticFacts = memoryContext.staticFacts.slice(0, 8);
+  const dynamicFacts = memoryContext.dynamicFacts.slice(0, 8);
+  const related = memoryContext.relatedMemories.slice(0, 8);
+
+  const sections: string[] = [];
+
+  if (staticFacts.length > 0) {
+    sections.push(
+      "## Persistent Profile\n" +
+        staticFacts.map((fact) => `- ${fact}`).join("\n"),
+    );
   }
 
-  const data = (await res.json()) as {
-    choices?: Array<{
-      message?: {
-        content?: string | Array<{ type?: string; text?: string }>;
+  if (dynamicFacts.length > 0) {
+    sections.push(
+      "## Recent Context\n" +
+        dynamicFacts.map((fact) => `- ${fact}`).join("\n"),
+    );
+  }
+
+  if (related.length > 0) {
+    sections.push(
+      "## Retrieved Memory Matches\n" +
+        related
+          .map((item) => {
+            const score = typeof item.similarity === "number"
+              ? ` (${Math.round(item.similarity * 100)}% relevance)`
+              : "";
+            return `- ${item.text}${score}`;
+          })
+          .join("\n"),
+    );
+  }
+
+  if (sections.length === 0) return "";
+
+  return [
+    "<memory-context>",
+    ...sections,
+    "Use this only when relevant to the current user request.",
+    "</memory-context>",
+  ].join("\n");
+}
+
+async function runSkillTool(
+  name: string,
+  input: Record<string, unknown>,
+): Promise<SkillResult> {
+  try {
+    if (name === "property_oracle") {
+      const query = typeof input.query === "string" ? input.query : undefined;
+      return {
+        tool: name,
+        ok: true,
+        data: queryPropertyOracle(query),
       };
-    }>;
-  };
+    }
 
-  const content = data.choices?.[0]?.message?.content;
-  if (typeof content === "string") {
-    return content;
+    if (name === "treasury_tracker") {
+      const address = typeof input.address === "string" ? input.address : undefined;
+      return {
+        tool: name,
+        ok: true,
+        data: await getTreasuryBalanceSnapshot(address),
+      };
+    }
+
+    return {
+      tool: name,
+      ok: false,
+      error: `Unknown tool: ${name}`,
+    };
+  } catch (err) {
+    return {
+      tool: name,
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
+}
 
-  if (Array.isArray(content)) {
-    const text = content
-      .filter((part): part is { type?: string; text?: string } => typeof part === "object")
-      .map((part) => part.text ?? "")
+function parseJsonObject(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === "object" && parsed !== null
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function extractOpenAIContent(
+  content: OpenAIMessage["content"],
+): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .filter((part): part is { type?: string; text?: string } => typeof part === "object")
+    .map((part) => part.text ?? "")
+    .join("\n")
+    .trim();
+}
+
+function isAnthropicTextBlock(block: AnthropicContentBlock): block is AnthropicTextBlock {
+  return block.type === "text" && typeof (block as AnthropicTextBlock).text === "string";
+}
+
+function isAnthropicToolUseBlock(
+  block: AnthropicContentBlock,
+): block is AnthropicToolUseBlock {
+  const candidate = block as Partial<AnthropicToolUseBlock>;
+  return block.type === "tool_use"
+    && typeof candidate.id === "string"
+    && typeof candidate.name === "string"
+    && typeof candidate.input === "object"
+    && candidate.input !== null;
+}
+
+async function callAnthropic(
+  userMessage: string,
+  systemPrompt: string,
+): Promise<string> {
+  const messages: AnthropicMessage[] = [{ role: "user", content: userMessage }];
+
+  for (let round = 0; round < MAX_MODEL_TOOL_LOOPS; round++) {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": AI.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: AI.model,
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages,
+        tools: ANTHROPIC_TOOLS,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Anthropic API error ${res.status}: ${body}`);
+    }
+
+    const data = (await res.json()) as AnthropicResponse;
+    const blocks = data.content ?? [];
+    const text = blocks
+      .filter(isAnthropicTextBlock)
+      .map((block) => block.text)
       .join("\n")
       .trim();
 
-    if (text) return text;
+    const toolUses = blocks.filter(isAnthropicToolUseBlock);
+    if (toolUses.length === 0) {
+      return text || "🤷 No response from AI.";
+    }
+
+    messages.push({ role: "assistant", content: blocks });
+
+    const toolResults: AnthropicToolResultBlock[] = [];
+    for (const toolUse of toolUses) {
+      const result = await runSkillTool(toolUse.name, toolUse.input);
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: toolUse.id,
+        content: JSON.stringify(result),
+        is_error: !result.ok,
+      });
+    }
+
+    messages.push({ role: "user", content: toolResults });
   }
 
-  return "🤷 No response from AI.";
+  return "🤷 I couldn't complete tool-assisted reasoning in time. Please try again.";
+}
+
+async function callOpenAI(
+  userMessage: string,
+  systemPrompt: string,
+): Promise<string> {
+  const messages: OpenAIMessage[] = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMessage },
+  ];
+
+  for (let round = 0; round < MAX_MODEL_TOOL_LOOPS; round++) {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${AI.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: AI.model,
+        max_tokens: 1024,
+        messages,
+        tools: OPENAI_TOOLS,
+        tool_choice: "auto",
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`OpenAI API error ${res.status}: ${body}`);
+    }
+
+    const data = (await res.json()) as OpenAIResponse;
+    const assistant = data.choices?.[0]?.message;
+
+    if (!assistant) {
+      return "🤷 No response from AI.";
+    }
+
+    const toolCalls = assistant.tool_calls ?? [];
+    if (toolCalls.length === 0) {
+      const text = extractOpenAIContent(assistant.content);
+      return text || "🤷 No response from AI.";
+    }
+
+    messages.push({
+      role: "assistant",
+      content: extractOpenAIContent(assistant.content),
+      tool_calls: toolCalls,
+    });
+
+    for (const toolCall of toolCalls) {
+      const args = parseJsonObject(toolCall.function.arguments ?? "{}");
+      const result = await runSkillTool(toolCall.function.name, args);
+
+      messages.push({
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result),
+      });
+    }
+  }
+
+  return "🤷 I couldn't complete tool-assisted reasoning in time. Please try again.";
 }
 
 /** Split a long message into chunks at sentence boundaries */

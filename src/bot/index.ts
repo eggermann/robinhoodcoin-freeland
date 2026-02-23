@@ -21,7 +21,7 @@
  */
 
 import { Bot, Context, session, type SessionFlavor } from "grammy";
-import { BOT, TELEGRAM, assertSecrets } from "../shared/config.js";
+import { BOT, MEMORY, TELEGRAM, assertSecrets } from "../shared/config.js";
 import { FileLeaderLock, type LeaderLockHandle } from "./leader-lock.js";
 
 // ── Command Handlers ─────────────────────────────────────
@@ -29,7 +29,7 @@ import { handleStart } from "./commands/start.js";
 import { handleHelp } from "./commands/help.js";
 import { handleTreasury } from "./commands/treasury.js";
 import { handleMission } from "./commands/mission.js";
-import { handleAsk } from "./commands/ask.js";
+import { configureAskMemory, handleAsk } from "./commands/ask.js";
 import {
   handlePropose,
   handleProposals,
@@ -60,6 +60,7 @@ import {
   setOpportunityStatus,
   type OpportunityType,
 } from "../soul/opportunity-scout.js";
+import { TextFileMemoryStore } from "./text-memory.js";
 
 // ── Session ──────────────────────────────────────────────
 
@@ -107,6 +108,23 @@ async function main() {
   }
 
   const bot = new Bot<BotContext>(TELEGRAM.botToken);
+  if (MEMORY.enabled) {
+    const textMemoryStore = new TextFileMemoryStore({
+      memoryDir: MEMORY.dir,
+      maxRecallResults: MEMORY.maxRecallResults,
+      recentFactsCount: MEMORY.recentFactsCount,
+      maxEntriesPerScope: MEMORY.maxEntriesPerScope,
+    });
+
+    configureAskMemory({
+      retrieve: (input) => textMemoryStore.retrieve(input),
+      capture: (input) => textMemoryStore.capture(input),
+    });
+    console.log(`🧠 Text memory enabled at ${MEMORY.dir}`);
+  } else {
+    configureAskMemory(null);
+    console.log("🧠 Text memory disabled (set BOT_MEMORY_ENABLED=true to enable).");
+  }
 
   // Initialize the Soul Network
   const soulNet = getSoulNetwork();

@@ -5,6 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "npm run start:bot",
+    "dev": "npm run dev:bot",
     "build": "tsc",
     "dev:bot": "tsx watch src/bot/index.ts",
     "start:bot": "node dist/bot/index.js",
@@ -28,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "openclaw": "^2026.2.22-2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vite": "^6.1.0",

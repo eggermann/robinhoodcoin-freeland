@@ -6,8 +6,12 @@ import {
   vote,
   listProposals,
   getProposal,
+  updateProposal,
+  deleteProposal,
   type ProposalType,
 } from "../../dao/governance.js";
+import { createLandStampBatch, findSelectableLandInText } from "../../nft/land-stamp-factory.js";
+import { setCampaignActive } from "../../nft/stamp-tiers.js";
 
 /**
  * /propose — Create a new governance proposal
@@ -25,13 +29,13 @@ export async function handlePropose(ctx: Context): Promise<void> {
 Usage: \`/propose <type> <title> | <description>\`
 
 Types:
-  \`land_purchase\` — Vote to buy a specific property
+  \`land_purchase\` — Vote to buy a selected land (must reference a land from /lands)
   \`grant\` — Allocate funds to a charitable cause
   \`parameter_change\` — Modify DAO parameters
   \`general\` — Open-ended proposal
 
 Example:
-\`/propose land_purchase Buy 5 acres in Brandenburg | Affordable woodland 30km from Berlin, zoned agricultural\``,
+\`/propose land_purchase LAND-ABC123 | Affordable woodland 30km from Berlin, zoned agricultural\``,
       { parse_mode: "Markdown" },
     );
     return;
@@ -55,15 +59,66 @@ Example:
   }
 
   const proposer = ctx.from?.id?.toString() ?? "unknown";
+  const selectedLand = type === "land_purchase"
+    ? findSelectableLandInText(`${title.trim()}\n${description}`)
+    : undefined;
+
+  if (type === "land_purchase" && !selectedLand) {
+    await ctx.reply(
+      "❌ `land_purchase` proposals must reference a selectable land from `/lands` (use the LAND-ID or exact land name in the title/description).",
+      { parse_mode: "Markdown" },
+    );
+    return;
+  }
 
   try {
-    const proposal = createProposal({
+    let proposal = createProposal({
       title: title.trim(),
       description,
       type,
       proposer,
       closesAt: new Date(Date.now() + 7 * 24 * 3600_000).toISOString(), // 7 days default
+      landDetails: selectedLand
+        ? {
+          selectedLandId: selectedLand.id,
+          location: selectedLand.location,
+          sizeAcres: selectedLand.sizeAcres,
+          priceSOL: selectedLand.landPriceSOL,
+          description: `Selected land "${selectedLand.name}" from ${selectedLand.source}.`,
+        }
+        : undefined,
     });
+
+    let crowdfundingInfo = "";
+    if (type === "land_purchase" && selectedLand) {
+      try {
+        const batch = await createLandStampBatch({
+          selectedLandId: selectedLand.id,
+          activateImmediately: false,
+        });
+        proposal = updateProposal(proposal.id, {
+          landDetails: {
+            selectedLandId: selectedLand.id,
+            location: selectedLand.location,
+            sizeAcres: selectedLand.sizeAcres,
+            priceSOL: selectedLand.landPriceSOL,
+            description: `Selected land "${selectedLand.name}" from ${selectedLand.source}.`,
+            stampCampaignId: batch.campaign.id,
+          },
+        });
+
+        crowdfundingInfo =
+          `\n🏡 Land: ${selectedLand.id} (${selectedLand.name})` +
+          `\n🎟️ Stamp campaign: \`${batch.campaign.id}\` (draft; activates only if proposal is approved)` +
+          `\n🎯 Crowdfunding goal: ${batch.campaign.goalSOL} SOL`;
+      } catch (err) {
+        deleteProposal(proposal.id);
+        const reason = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `land_purchase requires a linked draft stamp campaign. Proposal rollback completed. Root cause: ${reason}`,
+        );
+      }
+    }
 
     await ctx.reply(
       `✅ *Proposal Created!*
@@ -73,6 +128,7 @@ Example:
 📝 ${proposal.description}
 🆔 ID: \`${proposal.id}\`
 📊 Status: draft
+${crowdfundingInfo}
 
 To activate voting: \`/activate ${proposal.id}\`
 To view: \`/proposal ${proposal.id}\``,
@@ -158,6 +214,12 @@ export async function handleProposalDetail(ctx: Context): Promise<void> {
   if (proposal.landDetails) {
     const ld = proposal.landDetails;
     details += `\n\n🏞️ *Land Details*:\n  📍 ${ld.location}\n  📐 ${ld.sizeAcres} acres\n  💰 ${ld.priceSOL} SOL`;
+    if (ld.selectedLandId) {
+      details += `\n  🆔 Land ID: ${ld.selectedLandId}`;
+    }
+    if (ld.stampCampaignId) {
+      details += `\n  🎟️ Stamp Campaign: ${ld.stampCampaignId}`;
+    }
   }
 
   if (proposal.status === "active") {
@@ -249,6 +311,21 @@ export async function handleFinalize(ctx: Context): Promise<void> {
   try {
     const proposal = finalizeProposal(id);
     const emoji = proposal.status === "approved" ? "✅" : "❌";
+    let crowdfundingSyncNote = "";
+
+    if (proposal.type === "land_purchase" && proposal.landDetails?.stampCampaignId) {
+      try {
+        const shouldActivate = proposal.status === "approved";
+        const campaign = setCampaignActive(proposal.landDetails.stampCampaignId, shouldActivate);
+        crowdfundingSyncNote = shouldActivate
+          ? `\n\n🎟️ Linked stamp crowdfunding campaign activated: \`${campaign.id}\``
+          : `\n\n🎟️ Linked stamp crowdfunding campaign closed: \`${campaign.id}\``;
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        crowdfundingSyncNote = `\n\n⚠️ Could not sync linked stamp campaign: ${reason}`;
+      }
+    }
+
     await ctx.reply(
       `${emoji} *Proposal ${proposal.status.toUpperCase()}*
 
@@ -257,7 +334,7 @@ export async function handleFinalize(ctx: Context): Promise<void> {
 
 ${proposal.status === "approved"
   ? "The community has spoken! This proposal will proceed to execution."
-  : "The community has decided against this proposal."}`,
+  : "The community has decided against this proposal."}${crowdfundingSyncNote}`,
       { parse_mode: "Markdown" },
     );
   } catch (err) {

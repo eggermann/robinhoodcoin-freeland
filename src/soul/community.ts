@@ -72,6 +72,8 @@ export const WELCOME_MESSAGE = `🏹 *Welcome to the Robin Hood Clan!*
 
 You've just joined a community on a mission to *buy real land* for the people — governed by the people who fund it.
 
+Freeland itself is *strictly non-commercial*: no buying, selling, trade, shops, stores, or business activity inside Freeland zones.
+
 Here's how to get started:
 
 1️⃣ Read our /mission to understand what we're building
@@ -89,6 +91,8 @@ export function generatePersonalWelcome(username: string): string {
   return `🏹 Welcome, *${username}*!
 
 You're now part of the Robin Hood Clan. Here, we pool resources to buy *real land* for community use.
+
+Inside Freeland zones, commerce is not allowed: no buying, selling, shops, stores, or trade.
 
 Whether you're here to contribute, volunteer, or just learn — you're welcome.
 
@@ -122,7 +126,7 @@ export const FAQS: FAQ[] = [
     question: "What is Freeland?",
     keywords: ["freeland", "land", "what is freeland"],
     answer:
-      "Freeland is real, physical land purchased by the DAO and designated as a self-governed community commons. It can be used for housing, farming, maker spaces, community centers, or nature conservation — governed by its local community within the charter's principles.",
+      "Freeland is real, physical land purchased by the DAO and designated as a self-governed community commons. It can be used for housing, farming, maker spaces, community centers, or nature conservation — governed by its local community within the charter's principles. Freeland is strictly non-commercial: no buying/selling, trade, shops, stores, business operations, or commercial transactions inside Freeland zones.",
   },
   {
     question: "How do I buy RHC?",

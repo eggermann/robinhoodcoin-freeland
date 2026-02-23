@@ -8,7 +8,7 @@
 
 export const CHARTER = {
   name: "RobinHoodCoin Freeland Initiative",
-  version: "1.0.0",
+  version: "1.0.1",
   motto: "Create freedom. One parcel at a time.",
 
   /** Core principles that can never be violated */
@@ -19,6 +19,7 @@ export const CHARTER = {
     "Full transparency: every contribution, expenditure, and decision is publicly trackable on-chain.",
     "The project operates in the spirit of Robin Hood: redistribute wealth toward the common good, empower the underprivileged, and create spaces of genuine freedom.",
     "Each freeland parcel is self-governed by its local community ('Merry Men council'), with strategic oversight by the DAO to ensure alignment with the charter.",
+    "Freeland zones are strictly non-commercial: no buying, selling, trading, shops, stores, business operations, commercial services, or financial transactions are allowed within Freeland spaces.",
     "Violence, exclusion, and discrimination have no place in any freeland space. These are zones of peace, cooperation, and mutual aid.",
     "The AI Soul serves the mission, not individual interests. It propagates the idea of collective liberation through technology.",
   ],
@@ -37,6 +38,12 @@ export const CHARTER = {
     ],
     governance:
       "Each parcel has a local self-governance structure (the 'Merry Men council') while remaining bound to the charter's core principles via DAO oversight.",
+    prohibitedActivities: [
+      "No commercial business activity",
+      "No buying, selling, or trading",
+      "No shops or stores",
+      "No commercial dealings or transactions",
+    ],
   },
 
   /** Fund allocation rules */
@@ -100,6 +107,8 @@ ${CHARTER.spirit.vision}
 ${CHARTER.freelandDefinition.description}
 
 Freeland can be used for: ${CHARTER.freelandDefinition.uses.join(", ")}.
+
+Freeland is strictly non-commercial: ${CHARTER.freelandDefinition.prohibitedActivities.join("; ")}.
 
 ${CHARTER.freelandDefinition.governance}
 

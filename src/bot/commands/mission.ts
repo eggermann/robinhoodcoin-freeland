@@ -11,6 +11,8 @@ We are a crypto-powered collective inspired by the legend of Robin Hood.
 1️⃣ *Acquire "Freeland"*
 Purchase real land and designate it as self-governed, community-run zones — modern commons where people can live, gather, and create without the barriers of private ownership.
 
+Freeland is strictly *non-commercial*: no buying, selling, trading, shops, stores, business operations, or commercial transactions are allowed on Freeland.
+
 2️⃣ *Support Robin Hood Causes*
 Allocate funds to charitable and social projects — helping the underprivileged, funding grassroots initiatives, echoing "take from the rich, give to the poor."
 

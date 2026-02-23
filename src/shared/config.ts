@@ -54,6 +54,11 @@ export const BOT = {
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean),
+  leaderLockMode: (process.env.BOT_LEADER_LOCK_MODE ?? "none").toLowerCase(),
+  leaderLockFile: process.env.BOT_LEADER_LOCK_FILE ?? "./data/bot/leader.lock",
+  leaderLockTtlMs: Number(process.env.BOT_LEADER_LOCK_TTL_MS ?? "60000"),
+  leaderLockHeartbeatMs: Number(process.env.BOT_LEADER_LOCK_HEARTBEAT_MS ?? "15000"),
+  leaderLockRetryWaitMs: Number(process.env.BOT_LEADER_LOCK_RETRY_WAIT_MS ?? "5000"),
 } as const;
 
 // ── AI config ────────────────────────────────────────────

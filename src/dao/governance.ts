@@ -48,10 +48,12 @@ export interface Proposal {
   executionTx?: string;
   /** For land_purchase: target details */
   landDetails?: {
+    selectedLandId?: string;
     location: string;
     sizeAcres: number;
     priceSOL: number;
     description: string;
+    stampCampaignId?: string;
   };
 }
 
@@ -88,6 +90,36 @@ export function getProposal(id: string): Proposal | null {
   const filePath = path.join(PROPOSALS_DIR, `${id}.json`);
   if (!fs.existsSync(filePath)) return null;
   return JSON.parse(fs.readFileSync(filePath, "utf-8")) as Proposal;
+}
+
+export function updateProposal(
+  id: string,
+  updates: Partial<Omit<Proposal, "id" | "createdAt">>,
+): Proposal {
+  const proposal = getProposal(id);
+  if (!proposal) throw new Error(`Proposal ${id} not found`);
+
+  const next: Proposal = {
+    ...proposal,
+    ...updates,
+    landDetails: updates.landDetails
+      ? {
+        ...(proposal.landDetails ?? {}),
+        ...updates.landDetails,
+      }
+      : proposal.landDetails,
+  };
+
+  const filePath = path.join(PROPOSALS_DIR, `${id}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(next, null, 2));
+  return next;
+}
+
+export function deleteProposal(id: string): void {
+  const filePath = path.join(PROPOSALS_DIR, `${id}.json`);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
 }
 
 export function listProposals(status?: ProposalStatus): Proposal[] {

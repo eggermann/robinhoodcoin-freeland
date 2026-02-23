@@ -50,6 +50,11 @@ export interface StampCampaign {
   closesAt?: string;
 }
 
+export interface CreateCampaignInput
+  extends Omit<StampCampaign, "id" | "minted" | "raisedSOL" | "active" | "createdAt"> {
+  active?: boolean;
+}
+
 // ── Tier Definitions ─────────────────────────────────────
 
 export const STAMP_TIERS: Record<StampTier, StampTierConfig> = {
@@ -134,14 +139,14 @@ function saveCampaigns(campaigns: StampCampaign[]): void {
 }
 
 export function createCampaign(
-  opts: Omit<StampCampaign, "id" | "minted" | "raisedSOL" | "active" | "createdAt">,
+  opts: CreateCampaignInput,
 ): StampCampaign {
   const campaign: StampCampaign = {
     ...opts,
     id: `CAMP-${Date.now().toString(36).toUpperCase()}`,
     minted: 0,
     raisedSOL: 0,
-    active: true,
+    active: opts.active ?? true,
     createdAt: new Date().toISOString(),
   };
 
@@ -179,6 +184,20 @@ export function recordMint(campaignId: string): StampCampaign {
 
 export function getCampaign(id: string): StampCampaign | undefined {
   return loadCampaigns().find((c) => c.id === id);
+}
+
+export function setCampaignActive(campaignId: string, active: boolean): StampCampaign {
+  const campaigns = loadCampaigns();
+  const campaign = campaigns.find((c) => c.id === campaignId);
+  if (!campaign) throw new Error(`Campaign ${campaignId} not found`);
+
+  campaign.active = active;
+  if (!active && !campaign.closesAt) {
+    campaign.closesAt = new Date().toISOString();
+  }
+
+  saveCampaigns(campaigns);
+  return campaign;
 }
 
 export function getActiveCampaigns(): StampCampaign[] {

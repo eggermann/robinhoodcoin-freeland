@@ -12,6 +12,7 @@ export async function handleHelp(ctx: Context): Promise<void> {
 
 *── Governance ──*
 /propose — Create a new proposal
+/propose land_purchase must include a land from /lands
 /proposals — List all proposals
 /proposal \`<ID>\` — View proposal details
 /activate \`<ID>\` — Open voting
@@ -21,6 +22,8 @@ export async function handleHelp(ctx: Context): Promise<void> {
 *── Stamps & NFTs ──*
 /stamps — Active stamp campaigns
 /tiers — Stamp tier info & benefits
+/lands — List selectable lands (portfolio + shortlist)
+/landstamp — Create a stamp batch from selected land (Wikipedia + semantic motifs)
 
 *── Community ──*
 /events — Upcoming community events

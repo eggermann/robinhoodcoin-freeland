@@ -22,6 +22,7 @@
 
 import { Bot, Context, session, type SessionFlavor } from "grammy";
 import { BOT, TELEGRAM, assertSecrets } from "../shared/config.js";
+import { FileLeaderLock, type LeaderLockHandle } from "./leader-lock.js";
 
 // ── Command Handlers ─────────────────────────────────────
 import { handleStart } from "./commands/start.js";
@@ -51,6 +52,7 @@ import {
 } from "../soul/community.js";
 import { generateReport, formatReportTelegram } from "../soul/reporting.js";
 import { getActiveCampaigns, getCampaignProgress, STAMP_TIERS } from "../nft/stamp-tiers.js";
+import { createLandStampBatch, listSelectableLands } from "../nft/land-stamp-factory.js";
 import {
   addOpportunity,
   createProposalFromOpportunity,
@@ -68,14 +70,40 @@ interface SessionData {
 
 type BotContext = Context & SessionFlavor<SessionData>;
 
+function buildLeaderId(): string {
+  const host = process.env.HOSTNAME ?? "unknown-host";
+  return `${host}:${process.pid}`;
+}
+
 // ── Boot ─────────────────────────────────────────────────
 
-function main() {
+async function main() {
   assertSecrets();
 
   if (!TELEGRAM.botToken) {
     console.error("❌ TELEGRAM_BOT_TOKEN is not set. Check your .env file.");
     process.exit(1);
+  }
+
+  let leaderLockHandle: LeaderLockHandle | null = null;
+  if (BOT.leaderLockMode === "file") {
+    const leaderLock = new FileLeaderLock({
+      lockFile: BOT.leaderLockFile,
+      ownerId: buildLeaderId(),
+      ttlMs: BOT.leaderLockTtlMs,
+      heartbeatMs: BOT.leaderLockHeartbeatMs,
+      retryWaitMs: BOT.leaderLockRetryWaitMs,
+    });
+
+    console.log("🔒 Leader lock mode: file");
+    console.log(`   Waiting for leadership lock at ${BOT.leaderLockFile}`);
+
+    leaderLockHandle = await leaderLock.waitForLeadership((error) => {
+      console.error("❌ Leader lock lost:", error.message);
+      process.exit(1);
+    });
+
+    console.log(`✅ Leadership acquired as ${leaderLockHandle.ownerId}`);
   }
 
   const bot = new Bot<BotContext>(TELEGRAM.botToken);
@@ -115,6 +143,8 @@ function main() {
   // ── Stamp Commands ─────────────────────────────────
   bot.command("stamps", handleStamps);
   bot.command("tiers", handleTiers);
+  bot.command("lands", handleLands);
+  bot.command("landstamp", handleLandStamp);
 
   // ── Community Commands ─────────────────────────────
   bot.command("events", handleEvents);
@@ -207,6 +237,15 @@ function main() {
       console.log("   All modules loaded. Ready to create freedom. 🌿");
     },
   });
+
+  const shutdown = (signal: string) => {
+    console.log(`🛑 Received ${signal}, shutting down`);
+    leaderLockHandle?.release();
+    process.exit(0);
+  };
+
+  process.once("SIGINT", () => shutdown("SIGINT"));
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
 }
 
 // ── Stamp Commands Handler ───────────────────────────────
@@ -251,6 +290,96 @@ async function handleTiers(ctx: Context): Promise<void> {
     `🏷️ *Freeland Stamp Tiers*\n\n${lines.join("\n\n")}`,
     { parse_mode: "Markdown" },
   );
+}
+
+async function handleLands(ctx: Context): Promise<void> {
+  const lands = listSelectableLands();
+
+  if (lands.length === 0) {
+    await ctx.reply(
+      "🏡 No selectable lands yet. Add land to portfolio or shortlist first.",
+    );
+    return;
+  }
+
+  const lines = lands.map((land, idx) =>
+    `${idx + 1}. [${land.source}] ${land.id} — ${land.name}
+   ${land.location} | ${land.sizeAcres} acres | land target ${land.landPriceSOL} SOL | est. stamp value ${land.estimatedValueSOL} SOL`,
+  );
+
+  await ctx.reply(
+    `🏡 Selectable lands for stamp drops:\n\n${lines.join("\n\n")}\n\nUse: /landstamp <LAND-ID> | <maxSupply?> | <goalSOL?> | <valueSOL 0.5-1.5?>`,
+  );
+}
+
+async function handleLandStamp(ctx: Context): Promise<void> {
+  const text = ctx.message?.text ?? "";
+  const args = text.replace(/^\/landstamp\s*/, "").trim();
+
+  if (!args) {
+    await ctx.reply(
+      "🎟️ Create stamp batch from selected land.\n\nUsage:\n/landstamp <LAND-ID> | <maxSupply?> | <goalSOL?> | <valueSOL 0.5-1.5?>\n\nExample:\n/landstamp LAND-ABC123 | 180 | 162 | 0.9\n\nTip: run /lands first to see valid land IDs.",
+    );
+    return;
+  }
+
+  const parts = args.split("|").map((p) => p.trim()).filter(Boolean);
+  const selectedLandId = parts[0];
+  const maxSupply = parts[1] ? Number(parts[1]) : undefined;
+  const goalSOL = parts[2] ? Number(parts[2]) : undefined;
+  const requestedValueSOL = parts[3] ? Number(parts[3]) : undefined;
+
+  if (!selectedLandId) {
+    await ctx.reply("❌ Missing LAND-ID. Use /lands to list options.");
+    return;
+  }
+
+  if (parts[1] && !Number.isFinite(maxSupply)) {
+    await ctx.reply("❌ maxSupply must be a number.");
+    return;
+  }
+  if (parts[2] && !Number.isFinite(goalSOL)) {
+    await ctx.reply("❌ goalSOL must be a number.");
+    return;
+  }
+  if (parts[3] && !Number.isFinite(requestedValueSOL)) {
+    await ctx.reply("❌ valueSOL must be a number between 0.5 and 1.5.");
+    return;
+  }
+
+  await ctx.replyWithChatAction("typing");
+
+  try {
+    const result = await createLandStampBatch({
+      selectedLandId,
+      maxSupply,
+      goalSOL,
+      requestedValueSOL,
+      language: "en",
+    });
+
+    const motifs = result.semanticPhrases.slice(0, 6).join(" | ");
+    const promptPreview = result.prompt.slice(0, 300).replace(/\n/g, " ");
+
+    await ctx.reply(
+      `✅ Stamp campaign created from selected land.
+
+Campaign ID: ${result.campaign.id}
+Name: ${result.campaign.name}
+Land: ${result.selectedLand.id} (${result.selectedLand.name})
+Supply: ${result.campaign.maxSupply}
+Value per stamp: ${result.valueSOL} SOL
+Goal: ${result.campaign.goalSOL} SOL
+
+Daily Wikipedia topic: ${result.wikiTopic.title}
+Topic URL: ${result.wikiTopic.canonicalUrl}
+Semantic motifs: ${motifs}
+
+Prompt preview: ${promptPreview}...`,
+    );
+  } catch (err) {
+    await ctx.reply(`❌ Could not create land stamp campaign: ${err}`);
+  }
 }
 
 // ── Events Handler ───────────────────────────────────────
@@ -484,4 +613,7 @@ async function handleApproveOpportunity(ctx: Context): Promise<void> {
   }
 }
 
-main();
+main().catch((err) => {
+  console.error("❌ Bot startup failed:", err);
+  process.exit(1);
+});

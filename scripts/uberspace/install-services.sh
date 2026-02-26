@@ -5,12 +5,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SERVICES_DIR="${HOME}/etc/services.d"
 LOG_DIR="${HOME}/logs/robinhoodcoin"
+AUTONOMY_AUTOSTART="${AUTONOMY_AUTOSTART:-false}"
 
 mkdir -p "${SERVICES_DIR}" "${LOG_DIR}"
 
 cat > "${SERVICES_DIR}/robinhoodcoin-bot.ini" <<EOF
 [program:robinhoodcoin-bot]
-command=${ROOT_DIR}/scripts/uberspace/run-bot.sh
+command=/bin/bash -lc '${ROOT_DIR}/scripts/uberspace/run-bot.sh'
 directory=${ROOT_DIR}
 autostart=true
 autorestart=true
@@ -24,9 +25,9 @@ EOF
 
 cat > "${SERVICES_DIR}/robinhoodcoin-autonomy.ini" <<EOF
 [program:robinhoodcoin-autonomy]
-command=${ROOT_DIR}/scripts/uberspace/run-autonomy.sh
+command=/bin/bash -lc '${ROOT_DIR}/scripts/uberspace/run-autonomy.sh'
 directory=${ROOT_DIR}
-autostart=false
+autostart=${AUTONOMY_AUTOSTART}
 autorestart=unexpected
 startsecs=5
 stopsignal=TERM

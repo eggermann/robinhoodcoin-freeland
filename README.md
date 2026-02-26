@@ -284,6 +284,13 @@ State/log outputs:
 
 ### Hosting on Uberspace
 
+If you deploy or operate this stack on a Raspberry Pi, see headless SSH recovery:
+- `deploy/raspberrypi/headless-ssh.md`
+- Reverse tunnel auto-start service (Pi -> Uberspace):
+  `deploy/raspberrypi/openclaw-tunnel-service.md`
+- Full Pi + Uberspace operations runbook (OpenClaw gateway, reverse tunnel, bot start order, troubleshooting):
+  `deploy/uberspace/pi-uberspace-runbook.md`
+
 ```bash
 # One-time setup on Uberspace (if Node is not set yet):
 uberspace tools version use node 22

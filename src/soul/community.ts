@@ -106,31 +106,31 @@ _"The forest grows one tree at a time."_ 🌿`;
 export const FAQS: FAQ[] = [
   {
     question: "What is RobinHoodCoin?",
-    keywords: ["what", "robinhoodcoin", "rhc", "coin", "token"],
+    keywords: ["robinhoodcoin", "rhc", "rhc token", "robin hood coin"],
     answer:
       "RobinHoodCoin (RHC) is a Solana-based governance token for the Freeland Initiative. Holders vote on land purchases, charitable grants, and DAO decisions. It's not about speculation — it's about collective action.",
   },
   {
     question: "What is a Freeland Stamp?",
-    keywords: ["stamp", "nft", "freeland stamp"],
+    keywords: ["freeland stamp", "stamp", "stamps", "nft", "nfts"],
     answer:
       "Freeland Stamps are collectible NFTs that directly fund land acquisitions. Each stamp is a badge of contribution — proof that you helped buy land for the commons. They come in tiers: General Supporter, Parcel-specific, and Patron stamps.",
   },
   {
     question: "How are funds used?",
-    keywords: ["funds", "money", "treasury", "spend", "allocation"],
+    keywords: ["how are funds used", "treasury allocation", "treasury split", "allocation", "70%", "20%", "10%"],
     answer:
       "70% of funds go to buying land, 20% to charitable causes, and 10% to operations. All spending requires multisig approval, and large purchases need a full DAO vote. Everything is on-chain and transparent.",
   },
   {
     question: "What is Freeland?",
-    keywords: ["freeland", "land", "what is freeland"],
+    keywords: ["what is freeland", "freeland", "freeland zone", "community commons"],
     answer:
       "Freeland is real, physical land purchased by the DAO and designated as a self-governed community commons. It can be used for housing, farming, maker spaces, community centers, or nature conservation — governed by its local community within the charter's principles. Freeland is strictly non-commercial: no buying/selling, trade, shops, stores, business operations, or commercial transactions inside Freeland zones.",
   },
   {
     question: "How do I buy RHC?",
-    keywords: ["buy", "get", "purchase", "acquire", "rhc"],
+    keywords: ["how do i buy rhc", "buy rhc", "get rhc", "purchase rhc", "acquire rhc"],
     answer:
       "RHC can be obtained through community grants, earned by contributing (volunteering time or skills), or eventually traded on decentralized exchanges. We prioritize organic community growth over speculation.",
   },
@@ -148,7 +148,7 @@ export const FAQS: FAQ[] = [
   },
   {
     question: "Who is behind this?",
-    keywords: ["team", "who", "behind", "founder", "creators"],
+    keywords: ["who is behind", "core team", "founder", "creators", "behind robinhoodcoin"],
     answer:
       "RobinHoodCoin is a community-driven project. The core team includes developers, community organizers, and legal advisors — but the DAO belongs to all of its members. There's no central owner.",
   },
@@ -159,27 +159,111 @@ export const FAQS: FAQ[] = [
  * Returns the FAQ answer or null if no match.
  */
 export function matchFAQ(message: string): string | null {
-  const lower = message.toLowerCase();
-  const words = lower.split(/\s+/);
+  const normalized = message.trim();
+  if (!normalized) return null;
+
+  // Let the AI handle longer/open-ended statements.
+  if (!looksLikeFaqQuestion(normalized)) return null;
+
+  const lower = normalized.toLowerCase();
+  const tokenSet = new Set((lower.match(/[a-z0-9]+/g) ?? []));
 
   let bestMatch: FAQ | null = null;
   let bestScore = 0;
+  let bestMatchedKeywords = 0;
+  let bestMatchedSpecificKeywords = 0;
 
   for (const faq of FAQS) {
     let score = 0;
+    let matchedKeywords = 0;
+    let matchedSpecificKeywords = 0;
     for (const keyword of faq.keywords) {
-      if (lower.includes(keyword.toLowerCase())) {
-        score += keyword.length; // longer keyword matches score higher
+      const keywordResult = keywordScore(lower, tokenSet, keyword);
+      if (!keywordResult.matched) continue;
+      score += keywordResult.score;
+      matchedKeywords += 1;
+      if (keywordResult.specific) {
+        matchedSpecificKeywords += 1;
       }
     }
     if (score > bestScore) {
       bestScore = score;
       bestMatch = faq;
+      bestMatchedKeywords = matchedKeywords;
+      bestMatchedSpecificKeywords = matchedSpecificKeywords;
     }
   }
 
-  // Require a minimum match score
-  return bestScore >= 4 ? bestMatch?.answer ?? null : null;
+  if (!bestMatch) return null;
+  const hasStrongSignal =
+    bestMatchedSpecificKeywords >= 1
+    && (bestMatchedKeywords >= 2 || bestScore >= 10);
+  return hasStrongSignal ? bestMatch.answer : null;
+}
+
+function looksLikeFaqQuestion(message: string): boolean {
+  if (message.length > 220) return false;
+
+  const newlines = (message.match(/\n/g) ?? []).length;
+  if (newlines > 0) return false;
+  if (message.startsWith("/")) return false;
+
+  // Ignore operational/config payloads and key dumps.
+  if (/[A-Z_]{4,}\s*=/.test(message)) return false;
+  if (/https?:\/\//i.test(message)) return false;
+  if (/[A-Za-z0-9]{24,}/.test(message)) return false;
+
+  const lower = message.toLowerCase().trim();
+  if (lower.includes("?")) return true;
+
+  // Accept short direct questions even without punctuation.
+  const questionStarts = [
+    "what",
+    "who",
+    "how",
+    "why",
+    "where",
+    "when",
+    "is ",
+    "are ",
+    "do ",
+    "does ",
+    "can ",
+    "should ",
+    "tell me",
+    "explain",
+  ];
+
+  return questionStarts.some((prefix) => lower.startsWith(prefix));
+}
+
+function keywordScore(
+  lowerMessage: string,
+  tokenSet: Set<string>,
+  keyword: string,
+): { matched: boolean; score: number; specific: boolean } {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  if (!normalizedKeyword) {
+    return { matched: false, score: 0, specific: false };
+  }
+
+  if (normalizedKeyword.includes(" ")) {
+    const phrase = normalizedKeyword.replace(/\s+/g, " ");
+    return lowerMessage.includes(phrase)
+      ? { matched: true, score: phrase.length + 3, specific: true }
+      : { matched: false, score: 0, specific: false };
+  }
+
+  const matched = tokenSet.has(normalizedKeyword);
+  if (!matched) {
+    return { matched: false, score: 0, specific: false };
+  }
+  const specific = normalizedKeyword.length >= 4;
+  return {
+    matched: true,
+    score: specific ? normalizedKeyword.length + 1 : 1,
+    specific,
+  };
 }
 
 // ── Reminders ────────────────────────────────────────────

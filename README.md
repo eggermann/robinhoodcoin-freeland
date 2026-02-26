@@ -6,6 +6,54 @@ RobinHoodCoin (RHC) is a Solana-based DAO that pools resources from its members 
 
 ---
 
+## 📘 Project Brief (English)
+
+### 1. Vision and Mission
+RobinHoodCoin is a crypto-powered collective that acquires real land for communities. The mission is to convert concentrated wealth into **Freeland**: physical, self-governed commons withdrawn from speculative markets.
+
+Core goals:
+- acquire land for autonomous community spaces,
+- allocate part of the treasury to grassroots charitable causes.
+
+### 2. Funding Model and Token Design
+- **RobinHoodCoin (RHC)** is the governance token (total supply: 1,000,000,000) used for DAO voting on land purchases and treasury allocation.
+- **Freeland Stamp NFTs** are the crowdfunding instrument, organized in tiers (Genesis, Supporter, Parcel, Patron) with governance and recognition benefits.
+
+### 3. Treasury Transparency (70/20/10 Rule)
+All incoming funds follow the charter distribution:
+- **70%** land acquisition,
+- **20%** charitable Robin Hood causes,
+- **10%** operations (hosting, tech, legal).
+
+Treasury execution uses a **Squads v4 multisig** with majority approval (minimum 2-of-3). Large land purchases (>10,000 SOL) require full DAO voting.
+
+### 4. Soul Network and OpenClaw Autonomy
+The operational core is a role-based AI network:
+- **Soul Prime** (coordination),
+- **Little John** (land scouting),
+- **Marian** (finance),
+- **Friar Tuck** (moderation),
+- **Allan-a-Dale** (governance),
+- plus **PR** role support.
+
+This repository implements OpenClaw role routing plus autonomous loops for role reports, land scouting, finance monitoring, and an orchestrated RobinHood autonomy experience.
+
+### 5. Implementation Roadmap
+1. Foundation (team, charter, token, bot),
+2. Launch (NFT sale, community growth, website),
+3. First acquisition (DAO-voted first Freeland parcel),
+4. Development (local councils and on-site infrastructure),
+5. Scaling (multi-region chapters and DAO partnerships).
+
+### 6. Security and Governance
+- decentralized decisions via DAO + multisig,
+- self-hosted bot runtime for data sovereignty,
+- open-source charter and code for chapter replication.
+
+_“The forest grows one tree at a time.”_
+
+---
+
 ## 📁 Project Structure
 
 ```
@@ -27,6 +75,7 @@ robinhoodcoin-freeland/
 │   │       ├── help.ts        # /help — command list
 │   │       ├── mission.ts     # /mission — project vision
 │   │       ├── treasury.ts    # /treasury — live balance query
+│   │       ├── autonomy.ts    # /autonomy — run full OpenClaw experience cycle
 │   │       └── ask.ts         # Free-text AI Q&A (Anthropic/OpenAI/OpenClaw)
 │   ├── dao/
 │   │   └── governance.ts      # Off-chain proposal & voting system
@@ -94,6 +143,14 @@ The full supply is minted to the deployer's associated token account (the initia
 
 **Output**: Mint address printed to console — save it in `.env` as `RHC_MINT_ADDRESS`.
 
+### Transfer Mint Authority to Multisig (Recommended)
+
+```bash
+npm run transfer:mint-authority -- --mint <RHC_MINT_ADDRESS> --to <TREASURY_MULTISIG_ADDRESS>
+```
+
+After transfer, set `RHC_MINT_AUTHORITY=<TREASURY_MULTISIG_ADDRESS>` in `.env` so custody status is visible in the web dashboard.
+
 ---
 
 ## 🎨 Deploy Freeland Stamp NFTs
@@ -129,6 +186,44 @@ The bot uses [grammY](https://grammy.dev/) and supports Anthropic, OpenAI, or an
 3. Set `AI_PROVIDER` (`anthropic`, `openai`, or `openclaw`) in `.env`
 4. For `anthropic`/`openai`, set `AI_API_KEY`
 5. For `openclaw`, set `OPENCLAW_GATEWAY_URL` and gateway token/password if auth is enabled
+6. Optionally map role routing to OpenClaw agents (`OPENCLAW_AGENT_LAND_SCOUT_ID`, `OPENCLAW_AGENT_FINANCE_ID`, etc.)
+7. Recommended for solid campaign mode (chat + autonomy in one switch):
+   - set `OPENCLAW_CAMPAIGN_MODE=true`
+   - this auto-enables: OpenClaw provider, chat AI, orchestrated experience loop (exclusive), and fusion driver
+8. If you want autonomy-first (not chat-first):
+   - set `BOT_CHAT_AI_ENABLED=false` (disables free-text AI chat replies)
+   - set `OPENCLAW_AUTONOMOUS_ENABLED=true`
+   - pick workers with `OPENCLAW_AUTONOMOUS_ROLES` (for example `governance,pr,moderator`)
+   - tune `OPENCLAW_AUTONOMOUS_INTERVAL_MS`
+   - optionally set `OPENCLAW_AUTONOMOUS_NOTIFY_CHAT_ID` for alerts
+9. Optional autonomous land scout loop:
+   - set `LAND_SCOUT_AUTONOMOUS_ENABLED=true`
+   - tune interval and thresholds with `LAND_SCOUT_AUTONOMOUS_*` vars
+   - optionally set `LAND_SCOUT_NOTIFY_CHAT_ID` for cycle reports
+10. Optional autonomous finance monitor loop:
+   - set `FINANCE_MONITOR_ENABLED=true`
+   - tune thresholds with `FINANCE_MONITOR_*`
+   - optionally set `FINANCE_MONITOR_NOTIFY_CHAT_ID` for alert posts
+11. Optional **OpenClaw Autonomous RobinHood Experience** (single orchestrated cycle):
+   - set `OPENCLAW_EXPERIENCE_ENABLED=true`
+   - keep `OPENCLAW_EXPERIENCE_EXCLUSIVE=true` to avoid duplicate standalone loops
+   - tune cadence with `OPENCLAW_EXPERIENCE_INTERVAL_MS`
+   - optionally set `OPENCLAW_EXPERIENCE_NOTIFY_CHAT_ID` for mission dashboard posts
+   - run on demand with `/autonomy`
+12. OpenClaw fusion driver (mix DAO + users + stamps in one decision loop):
+   - `OPENCLAW_FUSION_ENABLED=true`
+   - tune `OPENCLAW_FUSION_MAX_ACTIONS`, `OPENCLAW_FUSION_MAX_TOKENS`, `OPENCLAW_FUSION_TEMPERATURE`
+   - fusion executes safe actions such as launching parcel campaigns and creating/activating linked land proposals
+13. Optional **headless fully autonomous mode** (no Telegram loop required):
+   - set `OPENCLAW_DAEMON_ENABLED=true`
+   - tune cadence with `OPENCLAW_DAEMON_INTERVAL_MS`
+   - run with `npm run start:autonomy`
+   - this mode executes:
+     - OpenClaw role cycle,
+     - autonomous land scout,
+     - autonomous finance monitor,
+     - autonomous governance executor (proposal drafting/activation by policy thresholds),
+     - monthly transparency report generation.
 
 ### Run
 
@@ -136,9 +231,18 @@ The bot uses [grammY](https://grammy.dev/) and supports Anthropic, OpenAI, or an
 # Development (hot reload)
 npm run dev:bot
 
+# Development in campaign mode (OpenClaw chat + autonomous campaign loop)
+npm run dev:campaign
+
 # Production
 npm run build
 npm run start:bot
+
+# Production in campaign mode
+npm run start:campaign
+
+# Standalone fully autonomous daemon (headless)
+npm run start:autonomy
 ```
 
 ### Commands
@@ -149,28 +253,78 @@ npm run start:bot
 | `/help` | List all commands |
 | `/mission` | Project vision & goals |
 | `/treasury` | Live treasury balance |
-| Free text | AI-powered Q&A about the project |
+| `/autonomy` | Run one full OpenClaw autonomous RobinHood experience cycle |
+| `/stampmint <CAMP-ID> <qty?>` | Record a Stamp mint and update member governance profile |
+| `/member` | Show your unified member profile (stamps + contribution + votes) |
+| Free text | AI-powered Q&A about the project (`BOT_CHAT_AI_ENABLED=true`) |
+
+### Fully Autonomous By Itself (Headless Runtime)
+
+If you want OpenClaw to run independently from Telegram commands/chats, use the standalone daemon:
+
+```bash
+npm run dev:autonomy
+# or
+npm run start:autonomy
+```
+
+Key env controls:
+- `OPENCLAW_DAEMON_ENABLED=true`
+- `OPENCLAW_DAEMON_INTERVAL_MS=1800000`
+- `OPENCLAW_FUSION_ENABLED=true`
+- `AUTONOMY_EXECUTOR_ENABLED=true`
+- `AUTONOMY_EXECUTOR_AUTO_ACTIVATE_PROPOSALS=true`
+- `AUTONOMY_EXECUTOR_OPPORTUNITY_MIN_SCORE=80`
+- `AUTONOMY_EXECUTOR_LAND_MIN_SCORE=82`
+
+State/log outputs:
+- `data/autonomy/daemon-cycles.jsonl`
+- `data/autonomy/executor-state.json`
+- `site/public/data/dashboard.json` (auto-synced each daemon cycle)
 
 ### Hosting on Uberspace
 
 ```bash
-# On your Uberspace server:
-git clone <repo> ~/robinhoodcoin
-cd ~/robinhoodcoin && npm install && npm run build
+# One-time setup on Uberspace (if Node is not set yet):
+uberspace tools version use node 22
 
-# Create a supervisord service:
-supervisorctl reread
-supervisorctl update
-supervisorctl start robinhoodcoin-bot
+# Clone and deploy:
+git clone <repo> ~/robinhoodcoin-freeland
+cd ~/robinhoodcoin-freeland
+bash deploy/uberspace/deploy.sh
 ```
 
-Example `~/etc/services.d/robinhoodcoin-bot.ini`:
-```ini
-[program:robinhoodcoin-bot]
-command=node /home/<user>/robinhoodcoin/dist/bot/index.js
-autostart=yes
-autorestart=yes
-environment=NODE_ENV="production"
+The deploy script will:
+- run `npm ci`, `npm run build`, and `npm run build:web`
+- publish the static site to `~/html/robinhoodcoin/` (customizable)
+- symlink `~/html/robinhoodcoin/data -> site/public/data` so daemon-updated dashboard JSON is live
+- install supervisor services:
+  - `~/etc/services.d/robinhoodcoin-bot.ini` (`autostart=true`)
+  - `~/etc/services.d/robinhoodcoin-autonomy.ini` (`autostart=false`)
+
+After deploy, common operations:
+```bash
+# Refresh from git and redeploy
+git pull
+bash deploy/uberspace/deploy.sh
+
+# Service control
+supervisorctl status robinhoodcoin-bot robinhoodcoin-autonomy
+supervisorctl restart robinhoodcoin-bot
+supervisorctl start robinhoodcoin-autonomy
+supervisorctl stop robinhoodcoin-autonomy
+```
+
+Optional deploy flags:
+```bash
+# Publish under a custom subdirectory
+WEB_SUBDIR=freeland bash deploy/uberspace/deploy.sh
+
+# Publish at domain root (~/html)
+WEB_SUBDIR= bash deploy/uberspace/deploy.sh
+
+# Also start autonomy service during deploy
+START_AUTONOMY=true bash deploy/uberspace/deploy.sh
 ```
 
 ---
@@ -230,6 +384,9 @@ v2 will integrate [SPL Governance](https://github.com/solana-labs/solana-program
 # Development server (port 3000)
 npm run dev:web
 
+# Sync live DAO/bot data into frontend JSON
+npm run sync:web-data
+
 # Build for production
 npm run build:web
 # Output: site/dist/
@@ -241,6 +398,7 @@ The website includes:
 - Freeland Stamp NFT showcase
 - Roadmap timeline
 - Transparency section (contract addresses)
+- Security posture and latest report status from `site/public/data/dashboard.json`
 
 ---
 
@@ -262,6 +420,7 @@ The website includes:
 - **Smart contract verification**: All deployed contracts should be verified on-chain
 - **AI bot**: Self-hosted on Uberspace — no third-party data exposure
 - **Key management**: Never commit `keys/` or `.env` to version control
+- **Custody visibility**: Keep `RHC_MINT_AUTHORITY` in `.env` and run `npm run sync:web-data` after governance or treasury changes
 
 ---
 

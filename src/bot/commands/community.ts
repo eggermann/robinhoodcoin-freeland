@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
 import { createReminder, getUpcomingEvents } from "../../soul/community.js";
 import { formatReportTelegram, generateReport } from "../../soul/reporting.js";
+import { syncWebDashboardData } from "../../soul/web-dashboard.js";
 
 export async function handleEvents(ctx: Context): Promise<void> {
   const events = getUpcomingEvents();
@@ -26,6 +27,11 @@ export async function handleReport(ctx: Context): Promise<void> {
   try {
     const treasuryAddr = process.env.TREASURY_MULTISIG_ADDRESS;
     const report = await generateReport(treasuryAddr);
+    try {
+      await syncWebDashboardData();
+    } catch (syncErr) {
+      console.error("Web dashboard sync failed after report generation:", syncErr);
+    }
     const formatted = formatReportTelegram(report);
     await ctx.reply(formatted, { parse_mode: "Markdown" });
   } catch (err) {

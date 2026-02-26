@@ -1,6 +1,17 @@
 import type { Context } from "grammy";
-import { getActiveCampaigns, getCampaignProgress, STAMP_TIERS } from "../../nft/stamp-tiers.js";
+import {
+  getActiveCampaigns,
+  getCampaign,
+  getCampaignProgress,
+  recordMint,
+  STAMP_TIERS,
+} from "../../nft/stamp-tiers.js";
 import { createLandStampBatch, listSelectableLands } from "../../nft/land-stamp-factory.js";
+import {
+  formatMemberProfile,
+  getMemberProfile,
+  recordStampMintForMember,
+} from "../../soul/member-ledger.js";
 
 export async function handleStamps(ctx: Context): Promise<void> {
   const campaigns = getActiveCampaigns();
@@ -133,4 +144,98 @@ Prompt preview: ${promptPreview}...`,
   } catch (err) {
     await ctx.reply(`❌ Could not create land stamp campaign: ${err}`);
   }
+}
+
+export async function handleStampMint(ctx: Context): Promise<void> {
+  const text = ctx.message?.text ?? "";
+  const args = text.replace(/^\/stampmint\s*/, "").trim();
+
+  if (!args) {
+    await ctx.reply(
+      "Usage: `/stampmint <CAMPAIGN-ID> <qty?>`\nExample: `/stampmint CAMP-ABC123 2`",
+    );
+    return;
+  }
+
+  const [campaignIdRaw, qtyRaw] = args.split(/\s+/);
+  const campaignId = campaignIdRaw?.trim();
+  const qty = qtyRaw ? Number(qtyRaw) : 1;
+
+  if (!campaignId) {
+    await ctx.reply("❌ Missing campaign ID.");
+    return;
+  }
+
+  if (!Number.isFinite(qty) || qty < 1 || qty > 20) {
+    await ctx.reply("❌ qty must be a number between 1 and 20.");
+    return;
+  }
+
+  const campaign = getCampaign(campaignId);
+  if (!campaign) {
+    await ctx.reply(`❌ Campaign ${campaignId} not found.`);
+    return;
+  }
+
+  let minted = 0;
+  let latest = campaign;
+  let mintError: string | null = null;
+
+  for (let i = 0; i < qty; i++) {
+    try {
+      latest = recordMint(campaignId);
+      minted += 1;
+    } catch (err) {
+      mintError = err instanceof Error ? err.message : String(err);
+      break;
+    }
+  }
+
+  if (minted === 0) {
+    await ctx.reply(`❌ Could not mint stamps: ${mintError ?? "unknown error"}`);
+    return;
+  }
+
+  const userId = ctx.from?.id?.toString() ?? "unknown-user";
+  const profile = recordStampMintForMember({
+    userId,
+    campaignId,
+    tier: latest.tier,
+    quantity: minted,
+    priceSOL: latest.priceSOL,
+    username: ctx.from?.username ?? undefined,
+    displayName: [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(" ").trim() || undefined,
+  });
+
+  const contribution = (latest.priceSOL * minted).toFixed(4);
+
+  await ctx.reply(
+    `✅ Mint recorded.
+
+Campaign: ${latest.name} (\`${latest.id}\`)
+Tier: ${latest.tier}
+Minted now: ${minted}
+Contribution: ${contribution} SOL
+Raised: ${latest.raisedSOL.toFixed(4)} / ${latest.goalSOL.toFixed(4)} SOL
+
+Your governance weight: ${profile.governanceWeight}
+Your total contribution: ${profile.totalContributedSOL.toFixed(4)} SOL${
+      mintError ? `\n\n⚠️ Partial mint: ${mintError}` : ""
+    }`,
+  );
+}
+
+export async function handleMember(ctx: Context): Promise<void> {
+  const userId = ctx.from?.id?.toString() ?? "unknown-user";
+  const profile = getMemberProfile(userId);
+
+  if (!profile) {
+    await ctx.reply(
+      "No member profile yet. Join chat activity, mint a stamp with `/stampmint`, or vote to create one.",
+      { parse_mode: "Markdown" },
+    );
+    return;
+  }
+
+  await ctx.reply(`👤 Member Profile\n\n${formatMemberProfile(profile)}`);
 }

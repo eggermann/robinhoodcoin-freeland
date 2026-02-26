@@ -5,10 +5,18 @@
  */
 
 import { Bot, session } from "grammy";
-import { BOT, MEMORY, TELEGRAM, assertSecrets } from "../shared/config.js";
+import {
+  AUTOEXPERIENCE,
+  BOT,
+  CAMPAIGN_MODE,
+  MEMORY,
+  TELEGRAM,
+  assertSecrets,
+} from "../shared/config.js";
 import { FileLeaderLock, type LeaderLockHandle } from "./leader-lock.js";
 import { TextFileMemoryStore } from "./text-memory.js";
 import { configureAskMemory } from "./commands/ask.js";
+import { handleAutonomy } from "./commands/autonomy.js";
 import { handleStart } from "./commands/start.js";
 import { handleHelp } from "./commands/help.js";
 import { handleTreasury } from "./commands/treasury.js";
@@ -26,6 +34,8 @@ import {
   handleTiers,
   handleLands,
   handleLandStamp,
+  handleStampMint,
+  handleMember,
 } from "./commands/stamps.js";
 import {
   handleEvents,
@@ -40,6 +50,10 @@ import {
 } from "./commands/soul.js";
 import { registerChatHandlers } from "./handlers/chat.js";
 import { startReminderLoop } from "./loops/reminders.js";
+import { startLandScoutLoop } from "./loops/land-scout.js";
+import { startFinanceMonitorLoop } from "./loops/finance-monitor.js";
+import { startOpenClawAutonomyLoop } from "./loops/openclaw-autonomy.js";
+import { startOpenClawExperienceLoop } from "./loops/openclaw-experience.js";
 import { getSoulNetwork } from "../soul/network.js";
 import type { BotContext, SessionData } from "./types.js";
 
@@ -101,6 +115,7 @@ function registerCommands(bot: Bot<BotContext>): void {
   bot.command("help", handleHelp);
   bot.command("treasury", handleTreasury);
   bot.command("mission", handleMission);
+  bot.command("autonomy", handleAutonomy);
 
   // Governance commands
   bot.command("propose", handlePropose);
@@ -115,6 +130,8 @@ function registerCommands(bot: Bot<BotContext>): void {
   bot.command("tiers", handleTiers);
   bot.command("lands", handleLands);
   bot.command("landstamp", handleLandStamp);
+  bot.command("stampmint", handleStampMint);
+  bot.command("member", handleMember);
 
   // Community commands
   bot.command("events", handleEvents);
@@ -161,8 +178,28 @@ async function main() {
   );
 
   registerCommands(bot);
-  registerChatHandlers(bot, getSoulNetwork());
+  registerChatHandlers(bot, getSoulNetwork(), {
+    aiEnabled: BOT.chatAiEnabled,
+  });
+
+  if (CAMPAIGN_MODE.enabled) {
+    console.log(
+      "🎯 OpenClaw campaign mode enabled (OpenClaw chat + autonomous experience + fusion).",
+    );
+  }
+
+  if (!BOT.chatAiEnabled) {
+    console.log("💬 Chat AI disabled (BOT_CHAT_AI_ENABLED=false). Running command/FAQ and autonomous workers only.");
+  }
   const reminderLoop = startReminderLoop(bot);
+  const openClawExperienceLoop = startOpenClawExperienceLoop(bot);
+  const runIndependentLoops = !(AUTOEXPERIENCE.enabled && AUTOEXPERIENCE.exclusive);
+  if (!runIndependentLoops) {
+    console.log("🤖 OpenClaw experience is running in exclusive mode; standalone autonomy loops are skipped.");
+  }
+  const landScoutLoop = runIndependentLoops ? startLandScoutLoop(bot) : null;
+  const financeMonitorLoop = runIndependentLoops ? startFinanceMonitorLoop(bot) : null;
+  const openClawAutonomyLoop = runIndependentLoops ? startOpenClawAutonomyLoop(bot) : null;
 
   bot.catch((err) => {
     console.error("Bot error:", err);
@@ -181,6 +218,18 @@ async function main() {
   const shutdown = (signal: string) => {
     console.log(`🛑 Received ${signal}, shutting down`);
     clearInterval(reminderLoop);
+    if (landScoutLoop) {
+      clearInterval(landScoutLoop);
+    }
+    if (financeMonitorLoop) {
+      clearInterval(financeMonitorLoop);
+    }
+    if (openClawAutonomyLoop) {
+      clearInterval(openClawAutonomyLoop);
+    }
+    if (openClawExperienceLoop) {
+      clearInterval(openClawExperienceLoop);
+    }
     leaderLockHandle?.release();
     process.exit(0);
   };

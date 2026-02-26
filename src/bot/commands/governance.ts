@@ -12,6 +12,7 @@ import {
 } from "../../dao/governance.js";
 import { createLandStampBatch, findSelectableLandInText } from "../../nft/land-stamp-factory.js";
 import { setCampaignActive } from "../../nft/stamp-tiers.js";
+import { recordGovernanceVoteForMember } from "../../soul/member-ledger.js";
 
 /**
  * /propose — Create a new governance proposal
@@ -282,6 +283,15 @@ export async function handleVote(ctx: Context): Promise<void> {
 
   try {
     const proposal = vote(proposalId, direction, voter);
+    if (ctx.from?.id) {
+      recordGovernanceVoteForMember({
+        userId: ctx.from.id.toString(),
+        proposalId,
+        direction,
+        username: ctx.from.username ?? undefined,
+        displayName: [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" ").trim() || undefined,
+      });
+    }
     const total = proposal.votesFor + proposal.votesAgainst;
     const forPct = Math.round((proposal.votesFor / total) * 100);
 

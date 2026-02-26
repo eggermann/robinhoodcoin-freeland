@@ -24,6 +24,8 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /tiers — Stamp tier info & benefits
 /lands — List selectable lands (portfolio + shortlist)
 /landstamp — Create a stamp batch from selected land (Wikipedia + semantic motifs)
+/stampmint \`<CAMP-ID> <qty?>\` — Record stamp mint/support and update member weight
+/member — Show your unified DAO + Stamp member profile
 
 *── Community ──*
 /events — Upcoming community events
@@ -33,6 +35,7 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /opportunities — Top grants, auctions, and sponsorship leads
 /scout — Add a new grant/auction/sponsorship opportunity
 /approveopp \`<OPP-ID>\` — Admin approval: convert opportunity into proposal
+/autonomy — Run one full OpenClaw autonomous experience cycle now
 
 *── AI Q&A ──*
 💬 Just *ask me anything* in a DM or mention @RobinHoodCoinBot in a group.

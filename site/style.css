@@ -552,13 +552,19 @@ ul { list-style: none; }
   text-align: center;
 }
 
+.campaign-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
 .campaign-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 2rem;
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
 }
 
 .campaign-card h4 {
@@ -633,6 +639,23 @@ ul { list-style: none; }
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
+}
+
+.portfolio-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.portfolio-card h4 {
+  margin-bottom: 0.5rem;
+}
+
+.portfolio-card p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
 }
 
 /* ── Soul Network ────────────────────────────────────── */
@@ -749,6 +772,33 @@ ul { list-style: none; }
   color: var(--color-text-muted);
   font-size: 0.9rem;
   margin-bottom: 0.5rem;
+}
+
+.report-meta {
+  font-size: 0.85rem;
+}
+
+.security-status {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  margin-top: 1.5rem;
+}
+
+.security-status h3 {
+  margin-bottom: 0.9rem;
+}
+
+.security-status ul {
+  list-style: disc;
+  padding-left: 1.2rem;
+}
+
+.security-status li {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
 }
 
 /* ── Footer ──────────────────────────────────────────── */

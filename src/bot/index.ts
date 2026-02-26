@@ -57,6 +57,13 @@ import { startOpenClawExperienceLoop } from "./loops/openclaw-experience.js";
 import { getSoulNetwork } from "../soul/network.js";
 import type { BotContext, SessionData } from "./types.js";
 
+const TELEGRAM_CONFLICT_RETRY_ATTEMPTS = Number(
+  process.env.BOT_TELEGRAM_CONFLICT_RETRY_ATTEMPTS ?? "5",
+);
+const TELEGRAM_CONFLICT_RETRY_DELAY_MS = Number(
+  process.env.BOT_TELEGRAM_CONFLICT_RETRY_DELAY_MS ?? "2500",
+);
+
 function buildLeaderId(): string {
   const host = process.env.HOSTNAME ?? "unknown-host";
   return `${host}:${process.pid}`;
@@ -154,6 +161,20 @@ function spawnSoulAgents(): void {
   soulNet.spawnSubAgent("governance", "telegram");
 }
 
+function isTelegramPollingConflict(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const candidate = err as { error_code?: unknown; description?: unknown };
+  if (candidate.error_code === 409) return true;
+  return typeof candidate.description === "string"
+    && candidate.description.toLowerCase().includes("terminated by other getupdates request");
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function main() {
   assertSecrets();
 
@@ -191,15 +212,54 @@ async function main() {
   if (!BOT.chatAiEnabled) {
     console.log("💬 Chat AI disabled (BOT_CHAT_AI_ENABLED=false). Running command/FAQ and autonomous workers only.");
   }
-  const reminderLoop = startReminderLoop(bot);
-  const openClawExperienceLoop = startOpenClawExperienceLoop(bot);
-  const runIndependentLoops = !(AUTOEXPERIENCE.enabled && AUTOEXPERIENCE.exclusive);
-  if (!runIndependentLoops) {
-    console.log("🤖 OpenClaw experience is running in exclusive mode; standalone autonomy loops are skipped.");
-  }
-  const landScoutLoop = runIndependentLoops ? startLandScoutLoop(bot) : null;
-  const financeMonitorLoop = runIndependentLoops ? startFinanceMonitorLoop(bot) : null;
-  const openClawAutonomyLoop = runIndependentLoops ? startOpenClawAutonomyLoop(bot) : null;
+
+  let reminderLoop: NodeJS.Timeout | null = null;
+  let openClawExperienceLoop: NodeJS.Timeout | null = null;
+  let landScoutLoop: NodeJS.Timeout | null = null;
+  let financeMonitorLoop: NodeJS.Timeout | null = null;
+  let openClawAutonomyLoop: NodeJS.Timeout | null = null;
+  let loopsStarted = false;
+
+  const startBackgroundLoops = () => {
+    if (loopsStarted) {
+      return;
+    }
+    loopsStarted = true;
+
+    reminderLoop = startReminderLoop(bot);
+    openClawExperienceLoop = startOpenClawExperienceLoop(bot);
+    const runIndependentLoops = !(AUTOEXPERIENCE.enabled && AUTOEXPERIENCE.exclusive);
+    if (!runIndependentLoops) {
+      console.log("🤖 OpenClaw experience is running in exclusive mode; standalone autonomy loops are skipped.");
+    }
+    landScoutLoop = runIndependentLoops ? startLandScoutLoop(bot) : null;
+    financeMonitorLoop = runIndependentLoops ? startFinanceMonitorLoop(bot) : null;
+    openClawAutonomyLoop = runIndependentLoops ? startOpenClawAutonomyLoop(bot) : null;
+  };
+
+  const stopBackgroundLoops = () => {
+    if (reminderLoop) {
+      clearInterval(reminderLoop);
+      reminderLoop = null;
+    }
+    if (landScoutLoop) {
+      clearInterval(landScoutLoop);
+      landScoutLoop = null;
+    }
+    if (financeMonitorLoop) {
+      clearInterval(financeMonitorLoop);
+      financeMonitorLoop = null;
+    }
+    if (openClawAutonomyLoop) {
+      clearInterval(openClawAutonomyLoop);
+      openClawAutonomyLoop = null;
+    }
+    if (openClawExperienceLoop) {
+      clearInterval(openClawExperienceLoop);
+      openClawExperienceLoop = null;
+    }
+    loopsStarted = false;
+  };
 
   bot.catch((err) => {
     console.error("Bot error:", err);
@@ -208,28 +268,57 @@ async function main() {
   console.log("🏹 RobinHoodCoin Soul Bot starting…");
   console.log(`   Agents active: ${getSoulNetwork().getActiveAgents().length}`);
 
-  bot.start({
-    onStart: (info) => {
-      console.log(`✅ Soul online as @${info.username}`);
-      console.log("   All modules loaded. Ready to create freedom. 🌿");
-    },
+  const startPolling = async () => {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        await bot.start({
+          onStart: (info) => {
+            console.log(`✅ Soul online as @${info.username}`);
+            console.log("   All modules loaded. Ready to create freedom. 🌿");
+            startBackgroundLoops();
+          },
+        });
+        return;
+      } catch (err) {
+        const shouldRetry =
+          isTelegramPollingConflict(err) && attempt <= TELEGRAM_CONFLICT_RETRY_ATTEMPTS;
+        if (shouldRetry) {
+          stopBackgroundLoops();
+          bot.stop();
+          console.error(
+            `⚠️ Telegram polling conflict (409): another bot instance is already running (${attempt}/${TELEGRAM_CONFLICT_RETRY_ATTEMPTS}).`,
+          );
+          console.error(
+            `   Retrying in ${TELEGRAM_CONFLICT_RETRY_DELAY_MS}ms. Stop duplicate processes if this persists.`,
+          );
+          await wait(TELEGRAM_CONFLICT_RETRY_DELAY_MS);
+          continue;
+        }
+        throw err;
+      }
+    }
+  };
+
+  void startPolling().catch((err) => {
+    if (isTelegramPollingConflict(err)) {
+      console.error(
+        "❌ Telegram polling conflict (409): retries exhausted. Another bot instance is still running with the same TELEGRAM_BOT_TOKEN.",
+      );
+      console.error(
+        "   Stop duplicate processes (supervisor/dev session) and restart a single instance.",
+      );
+    } else {
+      console.error("❌ Bot polling failed:", err);
+    }
+    stopBackgroundLoops();
+    leaderLockHandle?.release();
+    process.exit(1);
   });
 
   const shutdown = (signal: string) => {
     console.log(`🛑 Received ${signal}, shutting down`);
-    clearInterval(reminderLoop);
-    if (landScoutLoop) {
-      clearInterval(landScoutLoop);
-    }
-    if (financeMonitorLoop) {
-      clearInterval(financeMonitorLoop);
-    }
-    if (openClawAutonomyLoop) {
-      clearInterval(openClawAutonomyLoop);
-    }
-    if (openClawExperienceLoop) {
-      clearInterval(openClawExperienceLoop);
-    }
+    stopBackgroundLoops();
+    bot.stop();
     leaderLockHandle?.release();
     process.exit(0);
   };

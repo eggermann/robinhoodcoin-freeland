@@ -9,12 +9,30 @@ import {
   type OpportunityType,
 } from "../../soul/opportunity-scout.js";
 
+function escapeTelegramMarkdown(input: string): string {
+  return input.replace(/([_*`\[])/g, "\\$1");
+}
+
+function formatDateLabel(value?: string): string {
+  if (!value) return "open";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "open";
+  return date.toLocaleDateString();
+}
+
 export async function handleSoulStatus(ctx: Context): Promise<void> {
   const soulNet = getSoulNetwork();
   const agents = soulNet.getActiveAgents();
   const influence = soulNet.getInfluenceStats();
 
-  const agentList = agents.map((agent) => `  🤖 *${agent.name}* (${agent.role}) — ${agent.platform}`).join("\n");
+  const agentList = agents.length > 0
+    ? agents
+      .map((agent) => `  🤖 *${escapeTelegramMarkdown(agent.name)}* (${escapeTelegramMarkdown(agent.role)}) — ${escapeTelegramMarkdown(agent.platform)}`)
+      .join("\n")
+    : "  none";
+  const platformStats = Object.entries(influence.byPlatform)
+    .map(([platform, count]) => `${escapeTelegramMarkdown(platform)}: ${count}`)
+    .join(", ") || "none yet";
 
   await ctx.reply(
     `🧠 *Soul Network Status*
@@ -24,7 +42,7 @@ ${agentList}
 
 🌱 *Influence*
 Total actions: ${influence.totalActions}
-Platforms: ${Object.entries(influence.byPlatform).map(([platform, count]) => `${platform}: ${count}`).join(", ") || "none yet"}
+Platforms: ${platformStats}
 
 _The Soul spreads the idea of Freeland through every interaction.
 Every conversation is a seed planted. 🌿_`,
@@ -44,11 +62,11 @@ export async function handleOpportunities(ctx: Context): Promise<void> {
 
   const lines = opportunities.map((opportunity, idx) => {
     const value = opportunity.estimatedValueSOL ? `${opportunity.estimatedValueSOL} SOL` : "n/a";
-    const deadline = opportunity.deadline ? new Date(opportunity.deadline).toLocaleDateString() : "open";
-    return `${idx + 1}. *${opportunity.title}* (${opportunity.type})
+    const deadline = formatDateLabel(opportunity.deadline);
+    return `${idx + 1}. *${escapeTelegramMarkdown(opportunity.title)}* (${escapeTelegramMarkdown(opportunity.type)})
    score: ${opportunity.score}/100 | value: ${value} | status: ${opportunity.status}
    deadline: ${deadline}
-   source: ${opportunity.source}`;
+   source: ${escapeTelegramMarkdown(opportunity.source)}`;
   });
 
   await ctx.reply(
@@ -87,9 +105,8 @@ export async function handleScout(ctx: Context): Promise<void> {
 
   const title = parts[1];
   const source = parts[2];
-  const sourceUrl = parts[3];
-  const estimatedValueSOL = parts[4] ? Number(parts[4]) : undefined;
-  const deadline = parts[5] && parts[5] !== "-" ? parts[5] : undefined;
+  const sourceUrl = parts[3] ?? "";
+  const deadlineRaw = parts[5] && parts[5] !== "-" ? parts[5] : undefined;
   const region = parts[6] && parts[6] !== "-" ? parts[6] : undefined;
   const tags = parts[7]
     ? parts[7].split(",").map((tag) => tag.trim()).filter(Boolean)
@@ -106,13 +123,51 @@ export async function handleScout(ctx: Context): Promise<void> {
     return;
   }
 
+  let normalizedSourceUrl = "";
+  try {
+    const parsedUrl = new URL(sourceUrl);
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      throw new Error("protocol");
+    }
+    normalizedSourceUrl = parsedUrl.toString();
+  } catch {
+    await ctx.reply("❌ `url` must be a valid http(s) URL.", {
+      parse_mode: "Markdown",
+    });
+    return;
+  }
+
+  let estimatedValueSOL: number | undefined;
+  if (parts[4] && parts[4] !== "-") {
+    const parsedValue = Number(parts[4]);
+    if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+      await ctx.reply("❌ `valueSOL` must be a non-negative number (or `-`).", {
+        parse_mode: "Markdown",
+      });
+      return;
+    }
+    estimatedValueSOL = parsedValue;
+  }
+
+  let deadline: string | undefined;
+  if (deadlineRaw) {
+    const parsedDeadline = new Date(deadlineRaw);
+    if (Number.isNaN(parsedDeadline.getTime())) {
+      await ctx.reply("❌ `deadline` must be a valid date (example: `2026-04-15`) or `-`.", {
+        parse_mode: "Markdown",
+      });
+      return;
+    }
+    deadline = parsedDeadline.toISOString();
+  }
+
   const opp = addOpportunity({
     type: rawType,
     title,
     source,
-    sourceUrl,
+    sourceUrl: normalizedSourceUrl,
     region,
-    estimatedValueSOL: Number.isFinite(estimatedValueSOL) ? estimatedValueSOL : undefined,
+    estimatedValueSOL,
     deadline,
     requirements,
     notes,
@@ -120,9 +175,9 @@ export async function handleScout(ctx: Context): Promise<void> {
   });
 
   await ctx.reply(
-    `✅ *Opportunity added*\n\n🆔 \`${opp.id}\`\n🏷️ ${opp.type}\n📌 ${opp.title}\n📊 Score: *${opp.score}/100*\n📍 Region: ${opp.region ?? "n/a"}\n💰 Value: ${opp.estimatedValueSOL ?? "n/a"} SOL${
+    `✅ *Opportunity added*\n\n🆔 \`${escapeTelegramMarkdown(opp.id)}\`\n🏷️ ${escapeTelegramMarkdown(opp.type)}\n📌 ${escapeTelegramMarkdown(opp.title)}\n📊 Score: *${opp.score}/100*\n📍 Region: ${escapeTelegramMarkdown(opp.region ?? "n/a")}\n💰 Value: ${opp.estimatedValueSOL ?? "n/a"} SOL${
       opp.score >= 80
-        ? `\n\n🚦 High-priority lead. Admin can approve with: \`/approveopp ${opp.id}\``
+        ? `\n\n🚦 High-priority lead. Admin can approve with: \`/approveopp ${escapeTelegramMarkdown(opp.id)}\``
         : ""
     }`,
     { parse_mode: "Markdown" },
@@ -164,10 +219,11 @@ export async function handleApproveOpportunity(ctx: Context): Promise<void> {
     setOpportunityStatus(opportunityId, "pursuing");
 
     await ctx.reply(
-      `✅ Opportunity approved by admin.\n\n📋 Proposal created: \`${proposal.id}\`\n📝 Title: *${proposal.title}*\n📊 Status: ${proposal.status}\n\nNext: \`/activate ${proposal.id}\``,
+      `✅ Opportunity approved by admin.\n\n📋 Proposal created: \`${escapeTelegramMarkdown(proposal.id)}\`\n📝 Title: *${escapeTelegramMarkdown(proposal.title)}*\n📊 Status: ${escapeTelegramMarkdown(proposal.status)}\n\nNext: \`/activate ${escapeTelegramMarkdown(proposal.id)}\``,
       { parse_mode: "Markdown" },
     );
   } catch (err) {
-    await ctx.reply(`❌ ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    await ctx.reply(`❌ ${escapeTelegramMarkdown(message)}`, { parse_mode: "Markdown" });
   }
 }

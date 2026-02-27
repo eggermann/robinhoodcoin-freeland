@@ -15,6 +15,20 @@ export interface TreasuryTrackerSnapshot {
 
 const ENV_TREASURY_ADDRESS = process.env.TREASURY_MULTISIG_ADDRESS ?? "";
 
+function normalizeTreasuryAddress(raw: string): string {
+  const trimmed = raw.trim().replace(/^['\"]|['\"]$/g, "");
+  if (!trimmed) return "";
+
+  // Accept accidental full assignment strings pasted into env values, e.g.
+  // "TREASURY_MULTISIG_ADDRESS=..."
+  const eqIndex = trimmed.indexOf("=");
+  if (eqIndex >= 0) {
+    return trimmed.slice(eqIndex + 1).trim().replace(/^['\"]|['\"]$/g, "");
+  }
+
+  return trimmed;
+}
+
 function detectCluster(rpcEndpoint: string): TreasuryTrackerSnapshot["cluster"] {
   const endpoint = rpcEndpoint.toLowerCase();
   if (endpoint.includes("devnet")) return "devnet";
@@ -42,7 +56,7 @@ export async function getTreasuryBalanceSnapshot(
   const fetchedAt = new Date().toISOString();
   const rpcEndpoint = connection.rpcEndpoint;
   const cluster = detectCluster(rpcEndpoint);
-  const normalizedAddress = treasuryAddress.trim();
+  const normalizedAddress = normalizeTreasuryAddress(treasuryAddress);
 
   if (!normalizedAddress) {
     return {

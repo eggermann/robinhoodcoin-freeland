@@ -299,6 +299,10 @@ uberspace tools version use node 22
 git clone <repo> ~/robinhoodcoin-freeland
 cd ~/robinhoodcoin-freeland
 bash deploy/uberspace/deploy.sh
+
+# If Uberspace RAM is limited (npm ci gets killed), deploy from local build:
+UBERSPACE_USER=<user> UBERSPACE_HOST=<host> \
+  bash deploy/uberspace/deploy-local.sh
 ```
 
 The deploy script will:
@@ -332,6 +336,10 @@ WEB_SUBDIR= bash deploy/uberspace/deploy.sh
 
 # Also start autonomy service during deploy
 START_AUTONOMY=true bash deploy/uberspace/deploy.sh
+
+# Local build + remote runtime deploy (no npm ci on Uberspace)
+UBERSPACE_USER=<user> UBERSPACE_HOST=<host> START_AUTONOMY=true \
+  bash deploy/uberspace/deploy-local.sh
 ```
 
 ---

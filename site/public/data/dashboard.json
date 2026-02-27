@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-02-24T15:45:04.202Z",
+  "generatedAt": "2026-02-27T16:19:12.727Z",
   "stats": {
     "treasuryBalanceSOL": 0,
     "solRaised": 0,
@@ -13,8 +13,8 @@
     "address": null,
     "balanceSOL": 0,
     "balanceLamports": 0,
-    "rpcEndpoint": "https://api.devnet.solana.com",
-    "cluster": "devnet",
+    "rpcEndpoint": "https://api.mainnet-beta.solana.com",
+    "cluster": "mainnet-beta",
     "explorerUrl": null,
     "error": "TREASURY_MULTISIG_ADDRESS is not configured."
   },

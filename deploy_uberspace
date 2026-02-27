@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy/uberspace/deploy-local.sh"
+
+if [[ ! -x "${DEPLOY_SCRIPT}" ]]; then
+  echo "Deploy script not found or not executable: ${DEPLOY_SCRIPT}" >&2
+  exit 1
+fi
+
+load_env_file() {
+  local env_file="$1"
+  local line key value
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line%$'\r'}"
+
+    # Skip blanks and comments.
+    [[ -z "${line//[[:space:]]/}" ]] && continue
+    [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+
+    if [[ "${line}" == export\ * ]]; then
+      line="${line#export }"
+    fi
+
+    [[ "${line}" != *=* ]] && continue
+
+    key="${line%%=*}"
+    value="${line#*=}"
+
+    # Trim outer whitespace.
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    # Strip unquoted inline comments (common in .env.example style files).
+    if [[ "${value}" != \"*\" && "${value}" != \'*\' ]]; then
+      value="${value%% \#*}"
+    fi
+
+    # Remove matching wrapping quotes.
+    if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
+      value="${value:1:${#value}-2}"
+    elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+      value="${value:1:${#value}-2}"
+    fi
+
+    [[ -n "${key}" ]] && export "${key}=${value}"
+  done < "${env_file}"
+}
+
+ENV_FILE="${UBERSPACE_ENV_FILE:-}"
+if [[ -z "${ENV_FILE}" ]]; then
+  if [[ -f "${SCRIPT_DIR}/.env.pi" ]]; then
+    ENV_FILE="${SCRIPT_DIR}/.env.pi"
+  elif [[ -f "${SCRIPT_DIR}/.env" ]]; then
+    ENV_FILE="${SCRIPT_DIR}/.env"
+  fi
+fi
+
+if [[ -n "${ENV_FILE}" ]]; then
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    echo "UBERSPACE_ENV_FILE points to a missing file: ${ENV_FILE}" >&2
+    exit 1
+  fi
+
+  load_env_file "${ENV_FILE}"
+fi
+
+export UBERSPACE_USER="${UBERSPACE_USER:-${UBERSPACE_SSH_USER:-}}"
+export UBERSPACE_HOST="${UBERSPACE_HOST:-${UBERSPACE_SSH_HOST:-}}"
+export REMOTE_DIR="${REMOTE_DIR:-${UBERSPACE_APP_DIR:-}}"
+export WEB_SUBDIR="${WEB_SUBDIR:-robinhoodcoin}"
+export START_AUTONOMY="${START_AUTONOMY:-false}"
+export SKIP_LOCAL_BUILD="${SKIP_LOCAL_BUILD:-false}"
+
+if [[ -n "${REMOTE_DIR}" ]]; then
+  if [[ "${REMOTE_DIR}" == "~" ]]; then
+    REMOTE_DIR="/home/${UBERSPACE_USER}"
+  elif [[ "${REMOTE_DIR}" == "~/"* ]]; then
+    REMOTE_DIR="/home/${UBERSPACE_USER}/${REMOTE_DIR:2}"
+  fi
+  export REMOTE_DIR
+fi
+
+if [[ -z "${UBERSPACE_USER}" || -z "${UBERSPACE_HOST}" ]]; then
+  echo "Missing UBERSPACE target settings." >&2
+  echo "Set UBERSPACE_USER/UBERSPACE_HOST or UBERSPACE_SSH_USER/UBERSPACE_SSH_HOST in .env.pi (or via env)." >&2
+  exit 1
+fi
+
+echo "Deploying to ${UBERSPACE_USER}@${UBERSPACE_HOST}..."
+exec "${DEPLOY_SCRIPT}" "$@"

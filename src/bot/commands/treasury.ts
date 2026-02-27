@@ -12,6 +12,20 @@ function normalizeTreasuryAddress(raw: string): string {
   return trimmed;
 }
 
+function detectCluster(rpcEndpoint: string): "devnet" | "testnet" | "mainnet-beta" | "custom" {
+  const endpoint = rpcEndpoint.toLowerCase();
+  if (endpoint.includes("devnet")) return "devnet";
+  if (endpoint.includes("testnet")) return "testnet";
+  if (endpoint.includes("mainnet")) return "mainnet-beta";
+  return "custom";
+}
+
+function buildExplorerUrl(address: string, cluster: ReturnType<typeof detectCluster>): string {
+  return cluster === "mainnet-beta"
+    ? `https://explorer.solana.com/address/${address}`
+    : `https://explorer.solana.com/address/${address}?cluster=${cluster}`;
+}
+
 export async function handleTreasury(ctx: Context): Promise<void> {
   const treasuryAddress = normalizeTreasuryAddress(TREASURY_ADDRESS_RAW);
 
@@ -36,9 +50,11 @@ export async function handleTreasury(ctx: Context): Promise<void> {
   try {
     const balanceLamports = await connection.getBalance(pubkey);
     const balanceSol = (balanceLamports / LAMPORTS_PER_SOL).toFixed(4);
+    const cluster = detectCluster(connection.rpcEndpoint);
+    const explorerUrl = buildExplorerUrl(treasuryAddress, cluster);
 
     await ctx.reply(
-      `💰 *Robin Hood Treasury*\n\nAddress: \`${treasuryAddress}\`\nBalance: *${balanceSol} SOL*\n\n🔗 [View on Solana Explorer](https://explorer.solana.com/address/${treasuryAddress}?cluster=devnet)`,
+      `💰 *Robin Hood Treasury*\n\nAddress: \`${treasuryAddress}\`\nBalance: *${balanceSol} SOL*\n\n🔗 [View on Solana Explorer](${explorerUrl})`,
       { parse_mode: "Markdown" },
     );
   } catch (err) {

@@ -303,6 +303,11 @@ bash deploy/uberspace/deploy.sh
 # If Uberspace RAM is limited (npm ci gets killed), deploy from local build:
 UBERSPACE_USER=<user> UBERSPACE_HOST=<host> \
   bash deploy/uberspace/deploy-local.sh
+
+# Single-command local build + upload + restart (reads .env.pi first):
+./deploy_uberspace
+# or
+npm run deploy_uberspace
 ```
 
 The deploy script will:
@@ -340,6 +345,13 @@ START_AUTONOMY=true bash deploy/uberspace/deploy.sh
 # Local build + remote runtime deploy (no npm ci on Uberspace)
 UBERSPACE_USER=<user> UBERSPACE_HOST=<host> START_AUTONOMY=true \
   bash deploy/uberspace/deploy-local.sh
+
+# Wrapper command with env file + overrides
+START_AUTONOMY=true WEB_SUBDIR=freeland ./deploy_uberspace
+
+# Password-based SSH deploy (if no key auth is configured)
+SSH_PASSWORD='<uberspace-password>' ./deploy_uberspace
+# (`SSH_KEY` from .env.pi is also accepted)
 ```
 
 ---

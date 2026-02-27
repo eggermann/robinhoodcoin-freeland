@@ -7,8 +7,19 @@ const campaignModeEnabled =
   (process.env.OPENCLAW_CAMPAIGN_MODE ?? "false").toLowerCase() === "true";
 
 // ── Solana connection ────────────────────────────────────
+const SOLANA_CLUSTER = (process.env.SOLANA_CLUSTER ?? "").toLowerCase();
+
+function resolveClusterRpcUrl(cluster: string): string | null {
+  if (cluster === "devnet" || cluster === "testnet" || cluster === "mainnet-beta") {
+    return clusterApiUrl(cluster);
+  }
+  return null;
+}
+
 export const RPC_URL =
-  process.env.SOLANA_RPC_URL ?? clusterApiUrl("devnet");
+  process.env.SOLANA_RPC_URL
+  ?? resolveClusterRpcUrl(SOLANA_CLUSTER)
+  ?? clusterApiUrl("devnet");
 
 export const connection = new Connection(RPC_URL, "confirmed");
 

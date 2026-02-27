@@ -10,6 +10,7 @@ REMOTE_DIR="${REMOTE_DIR:-}"
 WEB_SUBDIR="${WEB_SUBDIR:-robinhoodcoin}"
 START_AUTONOMY="${START_AUTONOMY:-false}"
 SKIP_LOCAL_BUILD="${SKIP_LOCAL_BUILD:-false}"
+SSH_PASSWORD="${SSH_PASSWORD:-${SSH_KEY:-}}"
 
 if [[ -z "${UBERSPACE_USER}" || -z "${UBERSPACE_HOST}" ]]; then
   echo "Set UBERSPACE_USER and UBERSPACE_HOST (example: UBERSPACE_USER=eggman3 UBERSPACE_HOST=lynx.uberspace.de)." >&2
@@ -31,6 +32,29 @@ else
 fi
 
 REMOTE="${UBERSPACE_USER}@${UBERSPACE_HOST}"
+SSH_CMD=(ssh)
+RSYNC_SSH_CMD="ssh"
+
+if [[ -n "${SSH_PASSWORD}" ]]; then
+  if ! command -v sshpass >/dev/null 2>&1; then
+    echo "sshpass not found, but SSH_PASSWORD/SSH_KEY was provided." >&2
+    exit 1
+  fi
+
+  export SSHPASS="${SSH_PASSWORD}"
+  SSH_CMD=(
+    sshpass
+    -e
+    ssh
+    -o
+    PubkeyAuthentication=no
+    -o
+    PreferredAuthentications=password,keyboard-interactive
+    -o
+    NumberOfPasswordPrompts=1
+  )
+  RSYNC_SSH_CMD="sshpass -e ssh -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive -o NumberOfPasswordPrompts=1"
+fi
 
 if ! command -v ssh >/dev/null 2>&1; then
   echo "ssh not found." >&2
@@ -59,20 +83,20 @@ if [[ "${SKIP_LOCAL_BUILD}" != "true" ]]; then
 fi
 
 echo "Preparing remote directories..."
-ssh "${REMOTE}" "mkdir -p '${REMOTE_DIR}' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/site/public/data' '${WEB_ROOT}' '/home/${UBERSPACE_USER}/logs/robinhoodcoin'"
+"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${REMOTE_DIR}' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/site/public/data' '${WEB_ROOT}' '/home/${UBERSPACE_USER}/logs/robinhoodcoin'"
 
 echo "Syncing runtime artifacts to ${REMOTE}:${REMOTE_DIR}..."
-rsync -az --delete "${ROOT_DIR}/dist/" "${REMOTE}:${REMOTE_DIR}/dist/"
-rsync -az "${ROOT_DIR}/package.json" "${ROOT_DIR}/package-lock.json" "${REMOTE}:${REMOTE_DIR}/"
-rsync -az --delete "${ROOT_DIR}/scripts/uberspace/" "${REMOTE}:${REMOTE_DIR}/scripts/uberspace/"
+rsync -az --delete -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/dist/" "${REMOTE}:${REMOTE_DIR}/dist/"
+rsync -az -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/package.json" "${ROOT_DIR}/package-lock.json" "${REMOTE}:${REMOTE_DIR}/"
+rsync -az --delete -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/scripts/uberspace/" "${REMOTE}:${REMOTE_DIR}/scripts/uberspace/"
 
 echo "Publishing static website to ${REMOTE}:${WEB_ROOT}..."
-rsync -az --delete "${ROOT_DIR}/site/dist/" "${REMOTE}:${WEB_ROOT}/"
+rsync -az --delete -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/site/dist/" "${REMOTE}:${WEB_ROOT}/"
 
 REMOTE_ENV="$(printf "REMOTE_DIR=%q WEB_ROOT=%q START_AUTONOMY=%q" "${REMOTE_DIR}" "${WEB_ROOT}" "${START_AUTONOMY}")"
 
 echo "Running remote install + service reload..."
-ssh "${REMOTE}" "${REMOTE_ENV} bash -s" <<'EOF'
+"${SSH_CMD[@]}" "${REMOTE}" "${REMOTE_ENV} bash -s" <<'EOF'
 set -euo pipefail
 
 cd "${REMOTE_DIR}"

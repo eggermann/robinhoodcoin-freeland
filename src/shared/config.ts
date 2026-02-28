@@ -270,16 +270,6 @@ export const PAYPAL = {
   operationsShare: Number(process.env.OPERATIONS_PAYPAL_SHARE ?? "0.4"),
 } as const;
 
-// ── SMTP / Email ───────────────────────────────────────
-export const SMTP = {
-  host: process.env.SMTP_HOST ?? "",
-  port: Number(process.env.SMTP_PORT ?? "587"),
-  secure: (process.env.SMTP_SECURE ?? "false").toLowerCase() === "true",
-  user: process.env.SMTP_USER ?? "",
-  pass: process.env.SMTP_PASS ?? "",
-  from: process.env.SMTP_FROM ?? "",
-} as const;
-
 export function assertSecrets(): void {
   if (!PAYPAL.receiver) {
     throw new Error("Missing PAYPAL_RECEIVER in environment (.env).");

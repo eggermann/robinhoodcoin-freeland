@@ -304,7 +304,7 @@ bash deploy/uberspace/deploy.sh
 UBERSPACE_USER=<user> UBERSPACE_HOST=<host> \
   bash deploy/uberspace/deploy-local.sh
 
-# Single-command local build + upload + restart (reads .env.pi first):
+# Single-command local build + upload + restart (reads .env by default):
 ./deploy_uberspace
 # or
 npm run deploy_uberspace
@@ -351,7 +351,7 @@ START_AUTONOMY=true WEB_SUBDIR=freeland ./deploy_uberspace
 
 # Password-based SSH deploy (if no key auth is configured)
 SSH_PASSWORD='<uberspace-password>' ./deploy_uberspace
-# (`SSH_KEY` from .env.pi is also accepted)
+# (`SSH_KEY` from .env is also accepted)
 ```
 
 ---

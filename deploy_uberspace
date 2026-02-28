@@ -53,9 +53,7 @@ load_env_file() {
 
 ENV_FILE="${UBERSPACE_ENV_FILE:-}"
 if [[ -z "${ENV_FILE}" ]]; then
-  if [[ -f "${SCRIPT_DIR}/.env.pi" ]]; then
-    ENV_FILE="${SCRIPT_DIR}/.env.pi"
-  elif [[ -f "${SCRIPT_DIR}/.env" ]]; then
+  if [[ -f "${SCRIPT_DIR}/.env" ]]; then
     ENV_FILE="${SCRIPT_DIR}/.env"
   fi
 fi
@@ -87,7 +85,7 @@ fi
 
 if [[ -z "${UBERSPACE_USER}" || -z "${UBERSPACE_HOST}" ]]; then
   echo "Missing UBERSPACE target settings." >&2
-  echo "Set UBERSPACE_USER/UBERSPACE_HOST or UBERSPACE_SSH_USER/UBERSPACE_SSH_HOST in .env.pi (or via env)." >&2
+  echo "Set UBERSPACE_USER/UBERSPACE_HOST or UBERSPACE_SSH_USER/UBERSPACE_SSH_HOST in .env (or via env)." >&2
   exit 1
 fi
 

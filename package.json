@@ -26,6 +26,7 @@
     "build:web": "vite build site",
     "test:mail": "tsx src/tools/test-mail.ts",
     "start:mail-endpoint": "tsx src/tools/mail-endpoint.ts",
+    "notify:project": "tsx src/tools/send-project-update.ts",
     "test": "vitest"
   },
   "dependencies": {

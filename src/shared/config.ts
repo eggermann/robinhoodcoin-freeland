@@ -62,6 +62,16 @@ export const TELEGRAM = {
   botToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
 } as const;
 
+// ── SMTP config ────────────────────────────────────────
+export const SMTP = {
+  host: process.env.SMTP_HOST ?? "",
+  port: Number(process.env.SMTP_PORT ?? "587"),
+  secure: (process.env.SMTP_SECURE ?? "false").toLowerCase() === "true",
+  user: process.env.SMTP_USER ?? "",
+  pass: process.env.SMTP_PASS ?? "",
+  from: process.env.SMTP_FROM ?? "Soul - RobinHoodCoin <noreply@yourdomain.tld>",
+} as const;
+
 // ── Bot runtime config ──────────────────────────────────
 export const BOT = {
   adminIds: (process.env.BOT_ADMIN_IDS ?? "")

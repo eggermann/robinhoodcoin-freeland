@@ -24,6 +24,8 @@
     "dev:web": "vite dev site",
     "prebuild:web": "npm run sync:web-data",
     "build:web": "vite build site",
+    "test:mail": "tsx src/tools/test-mail.ts",
+    "start:mail-endpoint": "tsx src/tools/mail-endpoint.ts",
     "test": "vitest"
   },
   "dependencies": {
@@ -36,10 +38,12 @@
     "cheerio": "^1.2.0",
     "dotenv": "^16.4.7",
     "grammy": "^1.31.0",
+    "nodemailer": "^6.10.1",
     "semantic-stream": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/nodemailer": "^6.4.23",
     "openclaw": "^2026.2.22-2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "../../lib/db";
 
 export const dynamic = "force-dynamic";
@@ -18,16 +19,22 @@ export default async function PortfoliosPage() {
     <section>
       <p style={{ color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: 12 }}>🏹 Portfolios</p>
       <h1 style={{ marginTop: 0 }}>Live Parcels from DB</h1>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
         {parcels.map((parcel) => (
-          <article key={parcel.id} style={{ background: "#14211b", border: "1px solid #334155", borderRadius: 10, padding: 12 }}>
-            <h3 style={{ margin: "0 0 6px" }}>{parcel.title}</h3>
-            <p style={{ margin: 0 }}>{parcel.location}</p>
-            <p style={{ margin: "6px 0 0" }}>
-              {parcel.sizeAcres ?? "?"} acres • ${parcel.priceUsd?.toLocaleString() ?? "?"}
-            </p>
-            <p style={{ margin: "6px 0 0" }}>Score: {parcel.score ?? "?"}</p>
-            {parcel.sourceUrl ? <a href={parcel.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#34d399" }}>Source ↗</a> : null}
+          <article key={parcel.id} style={{ background: "#14211b", border: "1px solid #334155", borderRadius: 12, overflow: "hidden" }}>
+            {parcel.teaserImage ? <img src={parcel.teaserImage} alt={parcel.title} style={{ width: "100%", height: 160, objectFit: "cover" }} /> : null}
+            <div style={{ padding: 12 }}>
+              <h3 style={{ margin: "0 0 6px" }}>{parcel.title}</h3>
+              <p style={{ margin: 0 }}>{parcel.location}</p>
+              <p style={{ margin: "6px 0 0" }}>
+                {parcel.sizeAcres ?? "?"} acres • ${parcel.priceUsd?.toLocaleString() ?? "?"}
+              </p>
+              <p style={{ margin: "6px 0 10px" }}>Score: {parcel.score ?? "?"}</p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Link href={`/portfolios/${parcel.id}`} style={{ color: "#fbbf24" }}>Open details →</Link>
+                {parcel.sourceUrl ? <a href={parcel.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#34d399" }}>Source ↗</a> : null}
+              </div>
+            </div>
           </article>
         ))}
       </div>

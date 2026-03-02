@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Parcel {
-  id          String   @id @default(cuid())
-  externalId  String?  @unique
+  id          String          @id @default(cuid())
+  externalId  String?         @unique
   title       String
   location    String
   country     String?
@@ -17,7 +17,19 @@ model Parcel {
   priceUsd    Int?
   score       Int?
   sourceUrl   String?
-  status      String   @default("candidate")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  teaserImage String?
+  status      String          @default("candidate")
+  comments    ParcelComment[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model ParcelComment {
+  id        String   @id @default(cuid())
+  parcelId  String
+  author    String   @default("Anonymous")
+  body      String
+  createdAt DateTime @default(now())
+
+  parcel Parcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
 }

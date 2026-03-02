@@ -8,3 +8,7 @@ site/dist/
 .openclaw/
 
 apps/web-next/.next/
+
+apps/web-next/prisma/dev.db
+
+apps/web-next/prisma/prisma/dev.db

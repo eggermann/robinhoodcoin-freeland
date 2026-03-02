@@ -6,3 +6,5 @@ keys/
 site/dist/
 
 .openclaw/
+
+apps/web-next/.next/

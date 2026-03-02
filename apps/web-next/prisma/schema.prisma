@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Parcel {
+  id          String   @id @default(cuid())
+  externalId  String?  @unique
+  title       String
+  location    String
+  country     String?
+  sizeAcres   Float?
+  priceUsd    Int?
+  score       Int?
+  sourceUrl   String?
+  status      String   @default("candidate")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

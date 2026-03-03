@@ -11,28 +11,37 @@ Usage:
 
 Options:
   --gateway-only   Restart only openclaw-gateway
+  --skip-env-sync  Do not sync repo .env into ~/.openclaw/.env before restart
   -h, --help       Show this help
 EOF
 }
 
-restart_tunnel=true
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
-case "${1:-}" in
-  "")
-    ;;
-  --gateway-only)
-    restart_tunnel=false
-    ;;
-  -h|--help)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "Unknown option: ${1}" >&2
-    usage >&2
-    exit 1
-    ;;
-esac
+restart_tunnel=true
+sync_env=true
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --gateway-only)
+      restart_tunnel=false
+      shift
+      ;;
+    --skip-env-sync)
+      sync_env=false
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
 
 if ! command -v systemctl >/dev/null 2>&1; then
   echo "systemctl is not available on this machine." >&2
@@ -66,6 +75,15 @@ restart_and_check() {
     return 1
   fi
 }
+
+if [[ "${sync_env}" == "true" ]]; then
+  if [[ -x "${SCRIPT_DIR}/sync-openclaw-env.sh" ]]; then
+    echo "Syncing OpenClaw env..."
+    bash "${SCRIPT_DIR}/sync-openclaw-env.sh"
+  else
+    echo "Skipping env sync (missing ${SCRIPT_DIR}/sync-openclaw-env.sh)."
+  fi
+fi
 
 restart_and_check "openclaw-gateway"
 if [[ "${restart_tunnel}" == "true" ]]; then

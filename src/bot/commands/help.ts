@@ -39,6 +39,7 @@ export async function handleHelp(ctx: Context): Promise<void> {
 
 *── AI Q&A ──*
 💬 Just *ask me anything* in a DM or mention @RobinHoodCoinBot in a group.
+/model \`<name?>\` — Show or switch runtime model (admins; OpenClaw mode)
 
 _I know the charter, the mission, and the precedents._
 _Every conversation plants a seed. 🌿_

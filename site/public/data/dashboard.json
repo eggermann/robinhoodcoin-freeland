@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-02-27T16:05:28.470Z",
+  "generatedAt": "2026-03-03T13:15:53.836Z",
   "stats": {
-    "treasuryBalanceSOL": 0,
+    "treasuryBalanceSOL": 1,
     "solRaised": 0,
     "clanMembers": 0,
     "parcelsAcquired": 0,
@@ -9,14 +9,13 @@
     "activeCampaigns": 0
   },
   "treasury": {
-    "configured": false,
-    "address": null,
-    "balanceSOL": 0,
-    "balanceLamports": 0,
-    "rpcEndpoint": "https://api.mainnet-beta.solana.com",
-    "cluster": "mainnet-beta",
-    "explorerUrl": null,
-    "error": "TREASURY_MULTISIG_ADDRESS is not configured."
+    "configured": true,
+    "address": "6J8jeMFpLCEDUjzUGvczMRsuNw1Aeg1D3qFvMP6SCtcm",
+    "balanceSOL": 1,
+    "balanceLamports": 1000000000,
+    "rpcEndpoint": "https://api.devnet.solana.com",
+    "cluster": "devnet",
+    "explorerUrl": "https://explorer.solana.com/address/6J8jeMFpLCEDUjzUGvczMRsuNw1Aeg1D3qFvMP6SCtcm?cluster=devnet"
   },
   "campaigns": [],
   "portfolio": {
@@ -38,7 +37,7 @@
   },
   "transparency": {
     "rhcMintAddress": null,
-    "treasuryMultisigAddress": null,
+    "treasuryMultisigAddress": "6J8jeMFpLCEDUjzUGvczMRsuNw1Aeg1D3qFvMP6SCtcm",
     "nftCollectionAddress": null
   },
   "reports": {
@@ -47,7 +46,7 @@
     "latestReportUrl": null
   },
   "security": {
-    "multisigConfigured": false,
+    "multisigConfigured": true,
     "mintAuthorityStatus": "unknown",
     "mintAuthority": null,
     "daemonEnabled": false,

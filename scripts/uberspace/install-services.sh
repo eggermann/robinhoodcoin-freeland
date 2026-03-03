@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SERVICES_DIR="${HOME}/etc/services.d"
 LOG_DIR="${HOME}/logs/robinhoodcoin"
 AUTONOMY_AUTOSTART="${AUTONOMY_AUTOSTART:-false}"
+AUTONOMY_SERVICE_ENABLED="${AUTONOMY_SERVICE_ENABLED:-false}"
 
 mkdir -p "${SERVICES_DIR}" "${LOG_DIR}"
 
@@ -23,7 +24,8 @@ stdout_logfile=${LOG_DIR}/bot.log
 stderr_logfile=${LOG_DIR}/bot.err.log
 EOF
 
-cat > "${SERVICES_DIR}/robinhoodcoin-autonomy.ini" <<EOF
+if [[ "${AUTONOMY_SERVICE_ENABLED}" == "true" ]]; then
+  cat > "${SERVICES_DIR}/robinhoodcoin-autonomy.ini" <<EOF
 [program:robinhoodcoin-autonomy]
 command=/bin/bash -lc '${ROOT_DIR}/scripts/uberspace/run-autonomy.sh'
 directory=${ROOT_DIR}
@@ -36,7 +38,14 @@ killasgroup=true
 stdout_logfile=${LOG_DIR}/autonomy.log
 stderr_logfile=${LOG_DIR}/autonomy.err.log
 EOF
+else
+  rm -f "${SERVICES_DIR}/robinhoodcoin-autonomy.ini"
+fi
 
 echo "Installed supervisor service files:"
 echo " - ${SERVICES_DIR}/robinhoodcoin-bot.ini"
-echo " - ${SERVICES_DIR}/robinhoodcoin-autonomy.ini"
+if [[ "${AUTONOMY_SERVICE_ENABLED}" == "true" ]]; then
+  echo " - ${SERVICES_DIR}/robinhoodcoin-autonomy.ini"
+else
+  echo " - (skipped) robinhoodcoin-autonomy.ini"
+fi

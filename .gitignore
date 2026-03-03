@@ -6,6 +6,7 @@ keys/
 site/dist/
 
 .openclaw/
+.history/
 
 apps/web-next/.next/
 

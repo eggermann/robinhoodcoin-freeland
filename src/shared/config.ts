@@ -104,6 +104,38 @@ export const AI = {
   model: process.env.AI_MODEL ?? defaultAiModel,
 } as const;
 
+// ── AI runtime model switching (for AI_PROVIDER=openclaw) ─
+export const AI_RUNTIME = {
+  modelOrder: parseCsv(
+    process.env.AI_RUNTIME_MODEL_ORDER ?? "openclaw,nvidia-kimi",
+  ).map((value) => value.toLowerCase()),
+  defaultModel: (process.env.AI_RUNTIME_DEFAULT_MODEL ?? "openclaw").toLowerCase(),
+  autoSwitch:
+    (process.env.AI_RUNTIME_AUTO_SWITCH ?? "true").toLowerCase() !== "false",
+  fallbackNote:
+    (process.env.AI_RUNTIME_FALLBACK_NOTE ?? "true").toLowerCase() !== "false",
+  persistFile: process.env.AI_RUNTIME_PERSIST_FILE ?? ".env",
+  restartCommand: process.env.AI_RUNTIME_RESTART_COMMAND ?? "",
+  restartDelayMs: Number(process.env.AI_RUNTIME_RESTART_DELAY_MS ?? "1200"),
+  restartOnManualSwitch:
+    (process.env.AI_RUNTIME_RESTART_ON_MANUAL_SWITCH ?? "true").toLowerCase() !== "false",
+  restartOnAutoSwitch:
+    (process.env.AI_RUNTIME_RESTART_ON_AUTO_SWITCH ?? "true").toLowerCase() !== "false",
+} as const;
+
+// ── NVIDIA Kimi fallback (OpenAI-compatible endpoint) ───
+export const NVIDIA = {
+  enabled:
+    (process.env.NVIDIA_FALLBACK_ENABLED ?? "true").toLowerCase() !== "false",
+  apiKey: process.env.NVIDIA_API_KEY ?? "",
+  baseUrl: process.env.NVIDIA_BASE_URL ?? "https://integrate.api.nvidia.com/v1",
+  model: process.env.NVIDIA_MODEL ?? "moonshotai/kimi-k2.5",
+  maxTokens: Number(process.env.NVIDIA_MAX_TOKENS ?? "1024"),
+  temperature: Number(process.env.NVIDIA_TEMPERATURE ?? "0.7"),
+  topP: Number(process.env.NVIDIA_TOP_P ?? "1"),
+  thinking: (process.env.NVIDIA_THINKING ?? "false").toLowerCase() === "true",
+} as const;
+
 // ── OpenClaw gateway config ──────────────────────────────
 export const OPENCLAW = {
   gatewayUrl: process.env.OPENCLAW_GATEWAY_URL ?? "http://127.0.0.1:18789",

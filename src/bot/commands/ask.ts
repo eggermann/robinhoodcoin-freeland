@@ -1,5 +1,12 @@
 import type { Context } from "grammy";
-import { AI, OPENCLAW } from "../../shared/config.js";
+import { AI, AI_RUNTIME, NVIDIA, OPENCLAW } from "../../shared/config.js";
+import {
+  applyRuntimeModelSwitchEffects,
+  autoSwitchRuntimeModel,
+  getRuntimeModelAttemptOrder,
+  getRuntimeModelLabel,
+  getRuntimeModelStatus,
+} from "../ai-runtime.js";
 import { generateSoulPrompt } from "../../shared/charter.js";
 import { queryLandResearchOracle } from "../../soul/skills/land-research-oracle.js";
 import { queryPropertyOracle } from "../../soul/skills/property-oracle.js";
@@ -66,6 +73,11 @@ interface OpenClawRoute {
   role: OpenClawRole;
   agentId: string;
   reason: string;
+}
+
+interface OpenClawRuntimeContext {
+  route: OpenClawRoute;
+  promptWithRuntimeState: string;
 }
 
 interface OpenAIToolCall {
@@ -330,7 +342,7 @@ async function callAI(
     case "openai":
       return callOpenAI(userMessage, systemPrompt);
     case "openclaw":
-      return callOpenClaw(userMessage, systemPrompt, scope);
+      return callOpenClawWithFallback(userMessage, systemPrompt, scope);
     default:
       throw new Error(
         `Unsupported AI_PROVIDER="${AI.provider}". Use "anthropic", "openai", or "openclaw".`,
@@ -346,9 +358,14 @@ function getProviderConfigError(): string | null {
   }
 
   if (AI.provider === "openclaw") {
-    return OPENCLAW.gatewayUrl.trim()
-      ? null
-      : "🤖 OpenClaw is not configured yet. Set OPENCLAW_GATEWAY_URL in .env.";
+    const status = getRuntimeModelStatus();
+    const hasEnabledModel = status.available.some((model) => model.enabled);
+    if (hasEnabledModel) return null;
+
+    const reasons = status.available
+      .map((model) => `${model.id}: ${model.reasonDisabled ?? "not configured"}`)
+      .join(" | ");
+    return `🤖 OpenClaw runtime has no available model. Configure OPENCLAW_GATEWAY_URL and/or NVIDIA_API_KEY. (${reasons})`;
   }
 
   return `⚠️ Unsupported AI_PROVIDER="${AI.provider}". Use "anthropic", "openai", or "openclaw".`;
@@ -800,11 +817,17 @@ function buildOpenClawRoutingHint(route: OpenClawRoute): string {
   ].join("\n");
 }
 
-async function callOpenClaw(
+function buildNvidiaChatCompletionsUrl(): string {
+  const base = NVIDIA.baseUrl.endsWith("/")
+    ? NVIDIA.baseUrl
+    : `${NVIDIA.baseUrl}/`;
+  return new URL("chat/completions", base).toString();
+}
+
+async function buildOpenClawRuntimeContext(
   userMessage: string,
   systemPrompt: string,
-  scope: AskMemoryScope,
-): Promise<string> {
+): Promise<OpenClawRuntimeContext> {
   const route = routeToOpenClawAgent(userMessage);
   if (OPENCLAW.debugRouting) {
     console.log(
@@ -823,6 +846,17 @@ async function callOpenClaw(
     buildOpenClawRuntimeHint(propertyState, treasuryState, landResearchState),
   ].join("\n\n");
 
+  return {
+    route,
+    promptWithRuntimeState,
+  };
+}
+
+async function callOpenClawGateway(
+  userMessage: string,
+  scope: AskMemoryScope,
+  runtimeContext: OpenClawRuntimeContext,
+): Promise<string> {
   const url = buildOpenClawChatCompletionsUrl();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), OPENCLAW.timeoutMs);
@@ -830,12 +864,12 @@ async function callOpenClaw(
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: buildOpenClawHeaders(route),
+      headers: buildOpenClawHeaders(runtimeContext.route),
       body: JSON.stringify({
         model: OPENCLAW.model || AI.model || "openclaw",
         max_tokens: 1024,
         messages: [
-          { role: "system", content: promptWithRuntimeState },
+          { role: "system", content: runtimeContext.promptWithRuntimeState },
           { role: "user", content: userMessage },
         ],
         user: `telegram:${scope.chatId}:${scope.userId}`,
@@ -874,6 +908,127 @@ async function callOpenClaw(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function callNvidiaKimi(
+  userMessage: string,
+  scope: AskMemoryScope,
+  runtimeContext: OpenClawRuntimeContext,
+): Promise<string> {
+  const url = buildNvidiaChatCompletionsUrl();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENCLAW.timeoutMs);
+
+  try {
+    const body: Record<string, unknown> = {
+      model: NVIDIA.model,
+      max_tokens: NVIDIA.maxTokens,
+      temperature: NVIDIA.temperature,
+      top_p: NVIDIA.topP,
+      stream: false,
+      messages: [
+        { role: "system", content: runtimeContext.promptWithRuntimeState },
+        { role: "user", content: userMessage },
+      ],
+      user: `telegram:${scope.chatId}:${scope.userId}`,
+    };
+
+    if (NVIDIA.thinking) {
+      body.chat_template_kwargs = { thinking: true };
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${NVIDIA.apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const responseBody = await res.text();
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(
+          `NVIDIA auth error ${res.status}. Check NVIDIA_API_KEY in .env.`,
+        );
+      }
+      throw new Error(`NVIDIA Kimi error ${res.status}: ${responseBody}`);
+    }
+
+    const data = (await res.json()) as OpenAIResponse;
+    const assistant = data.choices?.[0]?.message;
+    if (!assistant) return "🤷 No response from AI.";
+
+    const text = extractOpenAIContent(assistant.content);
+    return text || "🤷 No response from AI.";
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(
+        `NVIDIA Kimi timeout after ${OPENCLAW.timeoutMs}ms. Increase OPENCLAW_TIMEOUT_MS if needed.`,
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callOpenClawWithFallback(
+  userMessage: string,
+  systemPrompt: string,
+  scope: AskMemoryScope,
+): Promise<string> {
+  const attemptOrder = getRuntimeModelAttemptOrder();
+  if (attemptOrder.length === 0) {
+    const status = getRuntimeModelStatus();
+    const reason = status.available
+      .map((model) => `${model.id}: ${model.reasonDisabled ?? "not configured"}`)
+      .join(" | ");
+    throw new Error(`No enabled runtime models are available. ${reason}`);
+  }
+
+  const runtimeContext = await buildOpenClawRuntimeContext(userMessage, systemPrompt);
+  const errors: string[] = [];
+
+  for (let idx = 0; idx < attemptOrder.length; idx += 1) {
+    const modelId = attemptOrder[idx];
+    const label = getRuntimeModelLabel(modelId);
+
+    try {
+      const answer = modelId === "openclaw"
+        ? await callOpenClawGateway(userMessage, scope, runtimeContext)
+        : await callNvidiaKimi(userMessage, scope, runtimeContext);
+
+      const switched = idx > 0 && autoSwitchRuntimeModel(modelId);
+      let switchNote = "";
+      if (switched) {
+        const effects = await applyRuntimeModelSwitchEffects(modelId, "auto");
+        if (!effects.persisted && effects.persistError) {
+          console.error("Auto-switch persist failed:", effects.persistError);
+        }
+        if (effects.restartReason) {
+          console.log(`[ai-runtime] ${effects.restartReason}`);
+        }
+        if (effects.restartScheduled) {
+          switchNote = `\n\n♻️ Runtime restart scheduled (${effects.restartReason ?? "configured command"}).`;
+        }
+      }
+
+      if (idx > 0 && AI_RUNTIME.fallbackNote) {
+        const mode = switched ? "auto-switched" : "temporary fallback";
+        return `⚠️ Fallback model: *${label}* (${mode}).\n\n${answer}${switchNote}`;
+      }
+
+      return answer;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`${label}: ${message}`);
+    }
+  }
+
+  throw new Error(`All runtime models failed. ${errors.join(" | ")}`);
 }
 
 /** Split a long message into chunks at sentence boundaries */

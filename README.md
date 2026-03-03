@@ -187,34 +187,43 @@ The bot uses [grammY](https://grammy.dev/) and supports Anthropic, OpenAI, or an
 4. For `anthropic`/`openai`, set `AI_API_KEY`
 5. For `openclaw`, set `OPENCLAW_GATEWAY_URL` and gateway token/password if auth is enabled
 6. Optionally map role routing to OpenClaw agents (`OPENCLAW_AGENT_LAND_SCOUT_ID`, `OPENCLAW_AGENT_FINANCE_ID`, etc.)
-7. Recommended for solid campaign mode (chat + autonomy in one switch):
+7. Optional fallback + model switching (OpenClaw primary, NVIDIA Kimi fallback):
+   - set `AI_RUNTIME_MODEL_ORDER=openclaw,nvidia-kimi`
+   - set `AI_RUNTIME_DEFAULT_MODEL=openclaw`
+   - keep `AI_RUNTIME_AUTO_SWITCH=true` for automatic failover
+   - optional persistence target: `AI_RUNTIME_PERSIST_FILE=.env`
+   - optional restart hook after switch: set `AI_RUNTIME_RESTART_COMMAND`
+     (example: `systemctl --user restart openclaw-gateway`)
+   - set `NVIDIA_API_KEY` (and optionally `NVIDIA_MODEL`, default `moonshotai/kimi-k2.5`)
+   - use `/model` in Telegram to view/switch active runtime model
+8. Recommended for solid campaign mode (chat + autonomy in one switch):
    - set `OPENCLAW_CAMPAIGN_MODE=true`
    - this auto-enables: OpenClaw provider, chat AI, orchestrated experience loop (exclusive), and fusion driver
-8. If you want autonomy-first (not chat-first):
+9. If you want autonomy-first (not chat-first):
    - set `BOT_CHAT_AI_ENABLED=false` (disables free-text AI chat replies)
    - set `OPENCLAW_AUTONOMOUS_ENABLED=true`
    - pick workers with `OPENCLAW_AUTONOMOUS_ROLES` (for example `governance,pr,moderator`)
    - tune `OPENCLAW_AUTONOMOUS_INTERVAL_MS`
    - optionally set `OPENCLAW_AUTONOMOUS_NOTIFY_CHAT_ID` for alerts
-9. Optional autonomous land scout loop:
+10. Optional autonomous land scout loop:
    - set `LAND_SCOUT_AUTONOMOUS_ENABLED=true`
    - tune interval and thresholds with `LAND_SCOUT_AUTONOMOUS_*` vars
    - optionally set `LAND_SCOUT_NOTIFY_CHAT_ID` for cycle reports
-10. Optional autonomous finance monitor loop:
+11. Optional autonomous finance monitor loop:
    - set `FINANCE_MONITOR_ENABLED=true`
    - tune thresholds with `FINANCE_MONITOR_*`
    - optionally set `FINANCE_MONITOR_NOTIFY_CHAT_ID` for alert posts
-11. Optional **OpenClaw Autonomous RobinHood Experience** (single orchestrated cycle):
+12. Optional **OpenClaw Autonomous RobinHood Experience** (single orchestrated cycle):
    - set `OPENCLAW_EXPERIENCE_ENABLED=true`
    - keep `OPENCLAW_EXPERIENCE_EXCLUSIVE=true` to avoid duplicate standalone loops
    - tune cadence with `OPENCLAW_EXPERIENCE_INTERVAL_MS`
    - optionally set `OPENCLAW_EXPERIENCE_NOTIFY_CHAT_ID` for mission dashboard posts
    - run on demand with `/autonomy`
-12. OpenClaw fusion driver (mix DAO + users + stamps in one decision loop):
+13. OpenClaw fusion driver (mix DAO + users + stamps in one decision loop):
    - `OPENCLAW_FUSION_ENABLED=true`
    - tune `OPENCLAW_FUSION_MAX_ACTIONS`, `OPENCLAW_FUSION_MAX_TOKENS`, `OPENCLAW_FUSION_TEMPERATURE`
    - fusion executes safe actions such as launching parcel campaigns and creating/activating linked land proposals
-13. Optional **headless fully autonomous mode** (no Telegram loop required):
+14. Optional **headless fully autonomous mode** (no Telegram loop required):
    - set `OPENCLAW_DAEMON_ENABLED=true`
    - tune cadence with `OPENCLAW_DAEMON_INTERVAL_MS`
    - run with `npm run start:autonomy`
@@ -254,6 +263,7 @@ npm run start:autonomy
 | `/mission` | Project vision & goals |
 | `/treasury` | Live treasury balance |
 | `/autonomy` | Run one full OpenClaw autonomous RobinHood experience cycle |
+| `/model <name?>` | Show or switch runtime model (`openclaw`, `nvidia-kimi`) |
 | `/stampmint <CAMP-ID> <qty?>` | Record a Stamp mint and update member governance profile |
 | `/member` | Show your unified member profile (stamps + contribution + votes) |
 | Free text | AI-powered Q&A about the project (`BOT_CHAT_AI_ENABLED=true`) |
@@ -288,6 +298,8 @@ If you deploy or operate this stack on a Raspberry Pi, see headless SSH recovery
 - `deploy/raspberrypi/headless-ssh.md`
 - Reverse tunnel auto-start service (Pi -> Uberspace):
   `deploy/raspberrypi/openclaw-tunnel-service.md`
+- Enable NVIDIA Kimi model in OpenClaw allowlist/provider on Pi:
+  `scripts/raspberrypi/enable-openclaw-nvidia-kimi.sh`
 - Full Pi + Uberspace operations runbook (OpenClaw gateway, reverse tunnel, bot start order, troubleshooting):
   `deploy/uberspace/pi-uberspace-runbook.md`
 
@@ -314,9 +326,8 @@ The deploy script will:
 - run `npm ci`, `npm run build`, and `npm run build:web`
 - publish the static site to `~/html/robinhoodcoin/` (customizable)
 - symlink `~/html/robinhoodcoin/data -> site/public/data` so daemon-updated dashboard JSON is live
-- install supervisor services:
-  - `~/etc/services.d/robinhoodcoin-bot.ini` (`autostart=true`)
-  - `~/etc/services.d/robinhoodcoin-autonomy.ini` (`autostart=false`)
+- install supervisor service `~/etc/services.d/robinhoodcoin-bot.ini` (`autostart=true`)
+- optionally install `~/etc/services.d/robinhoodcoin-autonomy.ini` only when `AUTONOMY_SERVICE_ENABLED=true`
 
 After deploy, common operations:
 ```bash
@@ -338,6 +349,9 @@ WEB_SUBDIR=freeland bash deploy/uberspace/deploy.sh
 
 # Publish at domain root (~/html)
 WEB_SUBDIR= bash deploy/uberspace/deploy.sh
+
+# Also install autonomy supervisor service (optional)
+AUTONOMY_SERVICE_ENABLED=true bash deploy/uberspace/deploy.sh
 
 # Also start autonomy service during deploy
 START_AUTONOMY=true bash deploy/uberspace/deploy.sh

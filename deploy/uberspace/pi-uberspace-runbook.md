@@ -93,7 +93,24 @@ Optional (keep user services running without active SSH session):
 sudo loginctl enable-linger pi
 ```
 
-### 2.5 Pi health check
+### 2.5 Provider Keys via `~/.openclaw/.env` (optional)
+
+OpenClaw runs under `systemd --user`, so it won't automatically read your repo `.env`.
+
+This repo includes a helper that syncs selected keys (for example `NVIDIA_API_KEY`) into
+OpenClaw's env file and ensures the gateway service loads it:
+
+```bash
+cd ~/robinhoodcoin-freeland
+bash scripts/raspberrypi/sync-openclaw-env.sh
+systemctl --user restart openclaw-gateway
+```
+
+The script writes to:
+- `~/.openclaw/.env` (chmod 600)
+- `~/.config/systemd/user/openclaw-gateway.service.d/env.conf` (`EnvironmentFile=-%h/.openclaw/.env`)
+
+### 2.6 Pi health check
 
 ```bash
 ss -ltn | grep 18789

@@ -8,6 +8,7 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /start — Welcome message
 /mission — Our vision and charter
 /treasury — Live treasury balance
+/id — Show your Telegram user ID (useful for admin setup)
 /help — This help message
 
 *── Governance ──*

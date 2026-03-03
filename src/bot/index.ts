@@ -17,6 +17,7 @@ import { FileLeaderLock, type LeaderLockHandle } from "./leader-lock.js";
 import { TextFileMemoryStore } from "./text-memory.js";
 import { configureAskMemory } from "./commands/ask.js";
 import { handleAutonomy } from "./commands/autonomy.js";
+import { handleId } from "./commands/id.js";
 import { handleModel } from "./commands/model.js";
 import { handleStart } from "./commands/start.js";
 import { handleHelp } from "./commands/help.js";
@@ -121,6 +122,7 @@ function registerCommands(bot: Bot<BotContext>): void {
   // Core commands
   bot.command("start", handleStart);
   bot.command("help", handleHelp);
+  bot.command("id", handleId);
   bot.command("treasury", handleTreasury);
   bot.command("mission", handleMission);
   bot.command("autonomy", handleAutonomy);

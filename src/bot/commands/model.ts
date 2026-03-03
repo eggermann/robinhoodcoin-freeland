@@ -74,14 +74,17 @@ export async function handleModel(ctx: Context): Promise<void> {
     return;
   }
 
-  if (BOT.adminIds.length > 0 && !isAdminUser(ctx)) {
-    await ctx.reply("❌ Only configured bot admins can switch runtime models.");
-    return;
-  }
-
   const arg = parseModelArg(ctx.message?.text ?? "");
   if (!arg) {
     await ctx.reply(formatModelStatus(), { parse_mode: "Markdown" });
+    return;
+  }
+
+  if (BOT.adminIds.length > 0 && !isAdminUser(ctx)) {
+    await ctx.reply(
+      "❌ Only configured bot admins can switch runtime models.\n\nTip: run `/id` and add your ID to `BOT_ADMIN_IDS` in `.env`.",
+      { parse_mode: "Markdown" },
+    );
     return;
   }
 

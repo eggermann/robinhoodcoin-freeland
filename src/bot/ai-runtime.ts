@@ -31,6 +31,21 @@ export interface RuntimeModelSwitchEffects {
 
 const KNOWN_MODELS: RuntimeModelId[] = ["openclaw", "nvidia-kimi"];
 
+// OpenClaw model id (as configured on the OpenClaw host allowlist).
+export const OPENCLAW_NVIDIA_KIMI_MODEL_ID = "nvidia/moonshotai/kimi-k2.5";
+
+export function getOpenClawModelOverrideForRuntime(
+  modelId: RuntimeModelId,
+): string | null {
+  switch (modelId) {
+    case "nvidia-kimi":
+      return OPENCLAW_NVIDIA_KIMI_MODEL_ID;
+    case "openclaw":
+    default:
+      return null;
+  }
+}
+
 const MODEL_ALIASES: Record<string, RuntimeModelId> = {
   openclaw: "openclaw",
   claw: "openclaw",
@@ -198,7 +213,9 @@ function defaultModel(): RuntimeModelId | null {
 
 function buildDescriptors(): RuntimeModelDescriptor[] {
   const openClawReady = OPENCLAW.gatewayUrl.trim().length > 0;
-  const nvidiaReady = NVIDIA.enabled && NVIDIA.apiKey.trim().length > 0;
+  // `nvidia-kimi` is executed via the OpenClaw gateway (host holds NVIDIA_API_KEY),
+  // so the bot does not need NVIDIA_API_KEY itself.
+  const nvidiaReady = openClawReady && NVIDIA.enabled;
 
   return [
     {
@@ -209,12 +226,12 @@ function buildDescriptors(): RuntimeModelDescriptor[] {
     },
     {
       id: "nvidia-kimi",
-      label: `nvidia-kimi (${NVIDIA.model})`,
+      label: `nvidia-kimi (openclaw: ${OPENCLAW_NVIDIA_KIMI_MODEL_ID})`,
       enabled: nvidiaReady,
       reasonDisabled: nvidiaReady
         ? undefined
         : NVIDIA.enabled
-          ? "NVIDIA_API_KEY is empty"
+          ? "OPENCLAW_GATEWAY_URL is empty"
           : "NVIDIA_FALLBACK_ENABLED=false",
     },
   ];

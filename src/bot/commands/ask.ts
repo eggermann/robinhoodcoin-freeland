@@ -3,6 +3,7 @@ import { AI, AI_RUNTIME, NVIDIA, OPENCLAW } from "../../shared/config.js";
 import {
   applyRuntimeModelSwitchEffects,
   autoSwitchRuntimeModel,
+  getOpenClawModelOverrideForRuntime,
   getRuntimeModelAttemptOrder,
   getRuntimeModelLabel,
   getRuntimeModelStatus,
@@ -357,16 +358,16 @@ function getProviderConfigError(): string | null {
       : "🤖 AI is not configured yet. Set AI_API_KEY in .env to enable Q&A.";
   }
 
-  if (AI.provider === "openclaw") {
-    const status = getRuntimeModelStatus();
-    const hasEnabledModel = status.available.some((model) => model.enabled);
-    if (hasEnabledModel) return null;
+	  if (AI.provider === "openclaw") {
+	    const status = getRuntimeModelStatus();
+	    const hasEnabledModel = status.available.some((model) => model.enabled);
+	    if (hasEnabledModel) return null;
 
-    const reasons = status.available
-      .map((model) => `${model.id}: ${model.reasonDisabled ?? "not configured"}`)
-      .join(" | ");
-    return `🤖 OpenClaw runtime has no available model. Configure OPENCLAW_GATEWAY_URL and/or NVIDIA_API_KEY. (${reasons})`;
-  }
+	    const reasons = status.available
+	      .map((model) => `${model.id}: ${model.reasonDisabled ?? "not configured"}`)
+	      .join(" | ");
+	    return `🤖 OpenClaw runtime has no available model. Configure OPENCLAW_GATEWAY_URL (and optionally NVIDIA_FALLBACK_ENABLED). (${reasons})`;
+	  }
 
   return `⚠️ Unsupported AI_PROVIDER="${AI.provider}". Use "anthropic", "openai", or "openclaw".`;
 }
@@ -856,17 +857,22 @@ async function callOpenClawGateway(
   userMessage: string,
   scope: AskMemoryScope,
   runtimeContext: OpenClawRuntimeContext,
+  modelOverride?: string | null,
 ): Promise<string> {
   const url = buildOpenClawChatCompletionsUrl();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), OPENCLAW.timeoutMs);
 
   try {
+    const model = (modelOverride ?? "").trim()
+      || OPENCLAW.model
+      || AI.model
+      || "openclaw";
     const res = await fetch(url, {
       method: "POST",
       headers: buildOpenClawHeaders(runtimeContext.route),
       body: JSON.stringify({
-        model: OPENCLAW.model || AI.model || "openclaw",
+        model,
         max_tokens: 1024,
         messages: [
           { role: "system", content: runtimeContext.promptWithRuntimeState },
@@ -997,9 +1003,13 @@ async function callOpenClawWithFallback(
     const label = getRuntimeModelLabel(modelId);
 
     try {
-      const answer = modelId === "openclaw"
-        ? await callOpenClawGateway(userMessage, scope, runtimeContext)
-        : await callNvidiaKimi(userMessage, scope, runtimeContext);
+      const modelOverride = getOpenClawModelOverrideForRuntime(modelId);
+      const answer = await callOpenClawGateway(
+        userMessage,
+        scope,
+        runtimeContext,
+        modelOverride,
+      );
 
       const switched = idx > 0 && autoSwitchRuntimeModel(modelId);
       let switchNote = "";

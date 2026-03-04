@@ -3,6 +3,7 @@ const REFRESH_INTERVAL_MS = 60_000;
 
 let revealObserver;
 let hasRenderedStats = false;
+let nextRefreshAt = 0;
 
 function setupSmoothScroll() {
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
@@ -97,6 +98,24 @@ function formatDate(iso) {
 function setTextById(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function setAliveState(ok, message) {
+  setTextById("alive-state", message);
+  setTextById("alive-updated", new Date().toLocaleTimeString());
+
+  const dot = document.getElementById("alive-dot");
+  if (dot) {
+    dot.classList.remove("alive-dot--ok", "alive-dot--warn");
+    dot.classList.add(ok ? "alive-dot--ok" : "alive-dot--warn");
+  }
+}
+
+function tickNextRefreshLabel() {
+  if (!nextRefreshAt) return;
+  const ms = Math.max(nextRefreshAt - Date.now(), 0);
+  const seconds = Math.ceil(ms / 1000);
+  setTextById("alive-next", `${seconds}s`);
 }
 
 function applyStats(data) {
@@ -310,9 +329,14 @@ async function refreshDashboard() {
   try {
     const dashboard = await fetchDashboard();
     applyDashboard(dashboard);
+    setAliveState(true, "Live sync healthy");
   } catch (err) {
     console.error("Could not load dashboard data:", err);
     setTextById("report-status", "Dashboard data unavailable. Run `npm run sync:web-data` to generate frontend data.");
+    setAliveState(false, "Sync issue detected");
+  } finally {
+    nextRefreshAt = Date.now() + REFRESH_INTERVAL_MS;
+    tickNextRefreshLabel();
   }
 }
 
@@ -324,4 +348,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   window.setInterval(() => {
     void refreshDashboard();
   }, REFRESH_INTERVAL_MS);
+
+  window.setInterval(() => {
+    tickNextRefreshLabel();
+  }, 1000);
 });

@@ -838,6 +838,51 @@ ul { list-style: none; }
 
 /* ── Responsive ──────────────────────────────────────── */
 
+.land-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.land-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.land-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+.land-card__body {
+  padding: 1rem;
+}
+
+.land-card__meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  margin: 0.35rem 0;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  margin-right: 0.4rem;
+}
+
+.badge--strong { background: #2e7d32; color: #fff; }
+.badge--consider { background: #8a6d1a; color: #fff; }
+.badge--open { background: #1565c0; color: #fff; }
+.badge--passed { background: #2e7d32; color: #fff; }
+.badge--draft { background: #6c757d; color: #fff; }
+
 @media (max-width: 768px) {
   .hero__stats { gap: 1.5rem; }
   .nav__links { display: none; }

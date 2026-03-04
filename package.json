@@ -24,6 +24,8 @@
     "dev:web": "vite dev --config vite.config.ts",
     "prebuild:web": "npm run sync:web-data",
     "build:web": "vite build --config vite.config.ts",
+    "check:openclaw": "bash scripts/raspberrypi/openclaw-local-check.sh",
+    "check:env": "bash scripts/raspberrypi/check-env-sanity.sh .env",
     "test:mail": "tsx src/tools/test-mail.ts",
     "start:mail-endpoint": "tsx src/tools/mail-endpoint.ts",
     "notify:project": "tsx src/tools/send-project-update.ts",

@@ -1,17 +1,13 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
-
-- **Name:**
-- **What to call them:**
-- **Pronouns:** _(optional)_
-- **Timezone:**
-- **Notes:**
+- **Name:** Dominik (assumed from repo context; confirm)
+- **What to call them:** Boss (until they set preference)
+- **Pronouns:** not set
+- **Timezone:** Europe/London
+- **Notes:** Builder/operator of RobinHoodCoin Freeland stack; prefers practical, action-first support.
 
 ## Context
 
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
-
----
-
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
+- Running OpenClaw gateway + bot stack on Raspberry Pi.
+- Working on autonomous agents, land scouting, governance, and campaign pages.
+- Wants fixes implemented directly in-repo with commits, not hand-wavy advice.

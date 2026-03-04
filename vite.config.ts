@@ -11,6 +11,7 @@ export default defineConfig({
         main: resolve(__dirname, "site/index.html"),
         land: resolve(__dirname, "site/land.html"),
         voting: resolve(__dirname, "site/voting.html"),
+        soul: resolve(__dirname, "site/soul.html"),
       },
     },
   },

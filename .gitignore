@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.bak.*
+.local-backup/
 keys/
 *.log
 site/dist/

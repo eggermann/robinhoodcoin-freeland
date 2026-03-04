@@ -1,0 +1,6 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+  <rect width='200' height='200' rx='24' fill='#111a16'/>
+  <circle cx='100' cy='82' r='42' fill='#4caf50'/>
+  <rect x='52' y='126' width='96' height='46' rx='18' fill='#2a3a2e'/>
+  <text x='100' y='92' text-anchor='middle' font-size='34' fill='#0a0f0d' font-family='Arial, sans-serif'>🏹</text>
+</svg>

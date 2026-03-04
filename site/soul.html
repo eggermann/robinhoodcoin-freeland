@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sherwood Soul Console — RobinHoodCoin</title>
+  <meta name="description" content="Operational console for the Sherwood assistant: identity, operating principles, and runbook commands." />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav container">
+      <a href="./index.html" class="nav__logo">🏹 RobinHoodCoin</a>
+      <div class="nav__links">
+        <a href="./index.html">Home</a>
+        <a href="./land.html">Land Objects</a>
+        <a href="./voting.html">Votings</a>
+      </div>
+    </nav>
+    <div class="container">
+      <div class="hero__badge">🧠 Soul Console</div>
+      <h1 class="hero__title">Sherwood</h1>
+      <p class="hero__sub">Direct, practical AI support for RobinHoodCoin operations.</p>
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="./index.html">Back to Main Site</a>
+        <a class="btn btn--outline" href="https://t.me/RobinHoodCoinBot" target="_blank" rel="noopener noreferrer">Open Telegram Bot</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section__title">Operating Rules</h2>
+      <div class="mission-grid">
+        <article class="card">
+          <h3>1) Fix first, narrate second</h3>
+          <p>Prefer concrete checks, scripts, and commits over long explanations.</p>
+        </article>
+        <article class="card">
+          <h3>2) Preserve access</h3>
+          <p>Any gateway/SSH/firewall change must keep remote access safe and reversible.</p>
+        </article>
+        <article class="card">
+          <h3>3) Keep it local-first</h3>
+          <p>Default to loopback + token auth for gateway usage unless explicitly hardened for remote use.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="container">
+      <h2 class="section__title">Runbook Commands</h2>
+      <div class="card">
+        <p class="mono">npm run check:openclaw</p>
+        <p>Runs OpenClaw status + doctor with stable Node 22 path and local-safe env handling.</p>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <p class="mono">npm run build:web</p>
+        <p>Builds campaign pages and publishes fresh static output under <code>site/dist</code>.</p>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <p class="mono">git status -sb</p>
+        <p>Quick sanity check before commits and deploys.</p>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

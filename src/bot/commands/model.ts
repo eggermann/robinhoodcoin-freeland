@@ -76,14 +76,13 @@ export async function handleModel(ctx: Context): Promise<void> {
 
   const arg = parseModelArg(ctx.message?.text ?? "");
   if (!arg) {
-    await ctx.reply(formatModelStatus(), { parse_mode: "Markdown" });
+    await ctx.reply(formatModelStatus());
     return;
   }
 
   if (BOT.adminIds.length > 0 && !isAdminUser(ctx)) {
     await ctx.reply(
-      "❌ Only configured bot admins can switch runtime models.\n\nTip: run `/id` and add your ID to `BOT_ADMIN_IDS` in `.env`.",
-      { parse_mode: "Markdown" },
+      "❌ Only configured bot admins can switch runtime models.\n\nTip: run /id and add your ID to BOT_ADMIN_IDS in .env.",
     );
     return;
   }
@@ -93,7 +92,6 @@ export async function handleModel(ctx: Context): Promise<void> {
     if (!next) {
       await ctx.reply(
         "⚠️ No default runtime model is currently available. Check /model and .env.",
-        { parse_mode: "Markdown" },
       );
       return;
     }
@@ -101,10 +99,9 @@ export async function handleModel(ctx: Context): Promise<void> {
     const effects = await applyRuntimeModelSwitchEffects(next, "manual");
     await ctx.reply(
       [
-        `✅ Runtime model reset to default: \`${next}\`.`,
+        `✅ Runtime model reset to default: ${next}.`,
         formatSwitchEffects(effects),
       ].filter(Boolean).join("\n"),
-      { parse_mode: "Markdown" },
     );
     return;
   }
@@ -120,6 +117,5 @@ export async function handleModel(ctx: Context): Promise<void> {
         effects ? formatSwitchEffects(effects) : "",
       ].filter(Boolean).join("\n")
       : `❌ ${result.message}`,
-    { parse_mode: "Markdown" },
   );
 }

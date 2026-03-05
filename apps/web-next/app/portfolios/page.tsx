@@ -158,7 +158,16 @@ export default async function PortfoliosPage() {
 
   return (
     <section>
-      <p style={{ color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: 12 }}>🏹 Portfolios</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <p style={{ color: "#fbbf24", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: 12 }}>🏹 Portfolios</p>
+        <nav style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 14 }}>
+          <Link href="/" style={{ color: "#9ca3af", textDecoration: "none" }}>Home</Link>
+          <Link href="/movement" style={{ color: "#9ca3af", textDecoration: "none" }}>Movement</Link>
+          <Link href="/land" style={{ color: "#9ca3af", textDecoration: "none" }}>Land Objects</Link>
+          <Link href="/voting" style={{ color: "#9ca3af", textDecoration: "none" }}>Votings</Link>
+          <Link href="/soul" style={{ color: "#9ca3af", textDecoration: "none" }}>Soul Console</Link>
+        </nav>
+      </div>
       <h1 style={{ marginTop: 0 }}>Live Parcels from DB</h1>
       <section
         style={{

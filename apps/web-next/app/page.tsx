@@ -44,6 +44,10 @@ export default async function HomePage() {
             <a href="#stamps" style={{ color: "#9ca3af", textDecoration: "none" }}>Stamps</a>
             <a href="#portfolio" style={{ color: "#9ca3af", textDecoration: "none" }}>Portfolio</a>
             <a href="#roadmap" style={{ color: "#9ca3af", textDecoration: "none" }}>Roadmap</a>
+            <Link href="/movement" style={{ color: "#9ca3af", textDecoration: "none" }}>Movement</Link>
+            <Link href="/land" style={{ color: "#9ca3af", textDecoration: "none" }}>Land Objects</Link>
+            <Link href="/voting" style={{ color: "#9ca3af", textDecoration: "none" }}>Votings</Link>
+            <Link href="/soul" style={{ color: "#9ca3af", textDecoration: "none" }}>Soul Console</Link>
           </nav>
         </div>
         <span
@@ -207,7 +211,7 @@ export default async function HomePage() {
             <p style={{ color: "#9ca3af" }}>No parcels in DB yet. Seed and refresh.</p>
           ) : null}
         </div>
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link
             href="/portfolios"
             style={{
@@ -221,6 +225,20 @@ export default async function HomePage() {
             }}
           >
             Open Full Portfolio
+          </Link>
+          <Link
+            href="/movement"
+            style={{
+              display: "inline-block",
+              border: "1px solid #4caf50",
+              color: "#4caf50",
+              padding: "10px 16px",
+              borderRadius: 10,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Live Movement Log
           </Link>
         </div>
       </section>

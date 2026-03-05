@@ -145,6 +145,29 @@ export default async function HomePage() {
       </section>
 
       <section
+        id="governance"
+        style={{
+          borderRadius: 14,
+          border: "1px solid #334155",
+          background: "#0f1a15",
+          padding: 22,
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Governance &amp; Merry Men Council</h2>
+        <p style={{ marginTop: 0, color: "#cbd5e1" }}>
+          Each parcel has a local Merry Men council for day-to-day governance, while the DAO enforces the charter and treasury rules.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 10 }}>
+          <FeatureCard title="Local Stewardship" body="On-the-ground councils decide practical use, maintenance, and community norms." />
+          <FeatureCard title="DAO Oversight" body="RHC holders vote on acquisitions, budgets, and policy changes." />
+          <FeatureCard title="Multisig Control" body="Treasury releases require multisig approvals for execution safety." />
+        </div>
+        <p style={{ margin: "12px 0 0", color: "#94a3b8" }}>
+          Land purchases above 10,000 SOL require a full DAO vote.
+        </p>
+      </section>
+
+      <section
         id="how"
         style={{
           borderRadius: 14,
@@ -171,15 +194,65 @@ export default async function HomePage() {
           padding: 22,
         }}
       >
-        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Stamp Tiers</h2>
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Freeland Stamps</h2>
         <p style={{ color: "#9ca3af", marginTop: 0 }}>
-          Funding tiers from the original index page are now embedded in the app view.
+          Collectible NFTs that fund freedom. Each stamp is a badge of contribution and proof that you helped buy land for the commons.
         </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px,1fr))", gap: 10 }}>
-          <TierCard name="Genesis" price="1 SOL" note="Founding tier, limited supply." />
-          <TierCard name="Supporter" price="0.5 SOL" note="Open participation entry point." />
-          <TierCard name="Parcel" price="2 SOL" note="Parcel-targeted funding tier." />
-          <TierCard name="Patron" price="10 SOL" note="High-conviction contributor tier." />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
+          <StampCard
+            name="Genesis Stamp"
+            price="1 SOL"
+            supply="0 / 1,000 minted"
+            badge="LIMITED"
+            perks={["Founding member badge", "Early access to all drops", "Vote weight bonus", "Genesis Wall inscription"]}
+          />
+          <StampCard
+            name="Supporter Stamp"
+            price="0.5 SOL"
+            supply="Unlimited"
+            badge=""
+            perks={["Proof of contribution", "Supporters-only channel", "Monthly transparency reports"]}
+          />
+          <StampCard
+            name="Parcel Stamp"
+            price="2 SOL"
+            supply="500 per campaign"
+            badge=""
+            perks={["Direct contribution to a parcel", "Unique AI-generated artwork", "Voting priority on that parcel"]}
+          />
+          <StampCard
+            name="Patron Stamp"
+            price="10 SOL"
+            supply="0 / 100 minted"
+            badge="PATRON"
+            perks={["All lower-tier benefits", "Enhanced vote weight", "Advisory seat on council", "Patron Wall feature"]}
+          />
+        </div>
+
+        <div style={{ marginTop: 18, border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+          <h3 style={{ marginTop: 0, color: "#fcd34d" }}>Active Campaigns</h3>
+          <p style={{ margin: 0, color: "#94a3b8" }}>No active campaigns yet. Create the first with `/landstamp` or the fusion driver.</p>
+        </div>
+
+        <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
+          <div style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+            <h4 style={{ marginTop: 0 }}>Land Objects Gallery</h4>
+            <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
+              Photo cards, parcel details, score, and acquisition fit for each shortlisted property.
+            </p>
+            <Link href="/land" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+              Open Land Gallery →
+            </Link>
+          </div>
+          <div style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+            <h4 style={{ marginTop: 0 }}>DAO Votings</h4>
+            <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
+              Track active proposals and vote status before treasury execution.
+            </p>
+            <Link href="/voting" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+              Open Votings →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -308,11 +381,44 @@ function StepCard({ n, title, body }: { n: string; title: string; body: string }
   );
 }
 
-function TierCard({ name, price, note }: { name: string; price: string; note: string }) {
+function StampCard({
+  name,
+  price,
+  supply,
+  badge,
+  perks,
+}: {
+  name: string;
+  price: string;
+  supply: string;
+  badge: string;
+  perks: string[];
+}) {
   return (
-    <article style={{ border: "1px solid #334155", borderRadius: 10, padding: 12, background: "#111827" }}>
+    <article style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#111827" }}>
+      {badge ? (
+        <span
+          style={{
+            display: "inline-flex",
+            padding: "4px 10px",
+            borderRadius: 999,
+            fontSize: 11,
+            background: "#fcd34d",
+            color: "#0a0f0d",
+            fontWeight: 800,
+            marginBottom: 8,
+          }}
+        >
+          {badge}
+        </span>
+      ) : null}
       <h3 style={{ margin: "0 0 6px", fontSize: 16 }}>{name}</h3>
-      <p style={{ margin: "0 0 6px", color: "#a7b1be", fontSize: 14 }}>{note}</p>
+      <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>{supply}</div>
+      <ul style={{ margin: "0 0 8px", paddingLeft: 18, color: "#a7b1be", fontSize: 13 }}>
+        {perks.map((perk) => (
+          <li key={perk}>{perk}</li>
+        ))}
+      </ul>
       <strong style={{ color: "#fcd34d" }}>{price}</strong>
     </article>
   );

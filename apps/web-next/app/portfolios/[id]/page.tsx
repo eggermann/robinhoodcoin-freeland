@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ParcelDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://freeland.rocks";
   const parcel = await db.parcel.findUnique({
     where: { id },
     include: { comments: { orderBy: { createdAt: "desc" }, take: 50 } },
@@ -15,7 +16,7 @@ export default async function ParcelDetailPage({ params }: { params: Promise<{ i
   if (!parcel) return notFound();
 
   const shareText = encodeURIComponent(`Check this Freeland parcel: ${parcel.title}`);
-  const shareUrl = encodeURIComponent(`https://eggman3.uber.space/v2/portfolios/${parcel.id}`);
+  const shareUrl = encodeURIComponent(`${siteUrl.replace(/\/$/, "")}/portfolios/${parcel.id}`);
 
   return (
     <section>

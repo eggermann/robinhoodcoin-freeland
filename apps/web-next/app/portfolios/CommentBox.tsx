@@ -14,7 +14,7 @@ export function CommentBox({ parcelId }: { parcelId: string }) {
     setSending(true);
     setOk(false);
     try {
-      const res = await fetch(`/v2/api/parcels/${parcelId}/comments`, {
+      const res = await fetch(`/api/parcels/${parcelId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ author: author || "Anonymous", body }),

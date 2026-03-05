@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "RobinHoodCoin v2",
-  description: "Freeland dashboard (Next.js + Prisma)",
+  title: "RobinHoodCoin Freeland",
+  description: "Create freedom, one parcel at a time.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

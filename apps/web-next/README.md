@@ -1,6 +1,6 @@
 # @freeland/web-next
 
-Next.js v2 frontend with Prisma-backed `/portfolios`.
+Next.js frontend with Prisma-backed `/portfolios`.
 
 ## Quick start
 

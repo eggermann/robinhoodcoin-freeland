@@ -16,14 +16,12 @@ DAY="${LOG_DAY:-$(date +%F)}"
 MAIN_LOG="/tmp/openclaw/openclaw-${DAY}.log"
 ERR_LOG="$HOME/logs/openclaw-gateway.err.log"
 
-if [[ ! -f "$MAIN_LOG" ]]; then
-  echo "Main log not found: $MAIN_LOG" >&2
-fi
+touch "$MAIN_LOG" "$ERR_LOG"
 
 printf "Watching: %s\n         %s\n" "$MAIN_LOG" "$ERR_LOG"
 printf "Legend: \033[38;5;82m[LAND]\033[0m land/stamp/gov | \033[38;5;214mWARN\033[0m | \033[38;5;196mERR\033[0m\n\n"
 
-tail -n0 -F -q "$MAIN_LOG" "$ERR_LOG" 2>/dev/null | \
+{ tail -n0 -F -q "$MAIN_LOG" "$ERR_LOG" 2>/dev/null || true; } | \
 python3 -u - <<'PY'
 import sys, json, time, re
 from datetime import datetime

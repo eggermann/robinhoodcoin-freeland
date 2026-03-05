@@ -4,6 +4,7 @@ import {
   formatOpenClawAutonomousExperience,
   runOpenClawAutonomousExperience,
 } from "../../soul/skills/openclaw-autonomous-experience.js";
+import { replyPlain } from "../telegram-reply.js";
 
 function isAdminUser(ctx: Context): boolean {
   const userId = ctx.from?.id?.toString();
@@ -21,7 +22,7 @@ export async function handleAutonomy(ctx: Context): Promise<void> {
 
   try {
     const report = await runOpenClawAutonomousExperience();
-    await ctx.reply(formatOpenClawAutonomousExperience(report), { parse_mode: "Markdown" });
+    await replyPlain(ctx, formatOpenClawAutonomousExperience(report));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await ctx.reply(`❌ Autonomous experience failed: ${message}`);

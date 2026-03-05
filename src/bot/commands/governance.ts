@@ -13,6 +13,7 @@ import {
 import { createLandStampBatch, findSelectableLandInText } from "../../nft/land-stamp-factory.js";
 import { setCampaignActive } from "../../nft/stamp-tiers.js";
 import { recordGovernanceVoteForMember } from "../../soul/member-ledger.js";
+import { replyPlain } from "../telegram-reply.js";
 
 /**
  * /propose — Create a new governance proposal
@@ -24,7 +25,8 @@ export async function handlePropose(ctx: Context): Promise<void> {
   const args = text.replace(/^\/propose\s*/, "").trim();
 
   if (!args) {
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `📋 *Create a Proposal*
 
 Usage: \`/propose <type> <title> | <description>\`
@@ -37,7 +39,6 @@ Types:
 
 Example:
 \`/propose land_purchase LAND-ABC123 | Affordable woodland 30km from Berlin, zoned agricultural\``,
-      { parse_mode: "Markdown" },
     );
     return;
   }
@@ -65,9 +66,9 @@ Example:
     : undefined;
 
   if (type === "land_purchase" && !selectedLand) {
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       "❌ `land_purchase` proposals must reference a selectable land from `/lands` (use the LAND-ID or exact land name in the title/description).",
-      { parse_mode: "Markdown" },
     );
     return;
   }
@@ -121,7 +122,8 @@ Example:
       }
     }
 
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `✅ *Proposal Created!*
 
 📋 *${proposal.title}*
@@ -133,7 +135,6 @@ ${crowdfundingInfo}
 
 To activate voting: \`/activate ${proposal.id}\`
 To view: \`/proposal ${proposal.id}\``,
-      { parse_mode: "Markdown" },
     );
   } catch (err) {
     await ctx.reply(`❌ Failed to create proposal: ${err}`);
@@ -168,9 +169,9 @@ export async function handleProposals(ctx: Context): Promise<void> {
     return `${emoji} \`${p.id}\` *${p.title}*${votes}`;
   });
 
-  await ctx.reply(
+  await replyPlain(
+    ctx,
     `📋 *Proposals* (${proposals.length} total)\n\n${lines.join("\n")}\n\nView details: \`/proposal <ID>\``,
-    { parse_mode: "Markdown" },
   );
 }
 
@@ -182,13 +183,13 @@ export async function handleProposalDetail(ctx: Context): Promise<void> {
   const id = text.replace(/^\/proposal\s*/, "").trim();
 
   if (!id) {
-    await ctx.reply("Usage: `/proposal <ID>`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "Usage: `/proposal <ID>`");
     return;
   }
 
   const proposal = getProposal(id);
   if (!proposal) {
-    await ctx.reply(`❌ Proposal \`${id}\` not found.`, { parse_mode: "Markdown" });
+    await replyPlain(ctx, `❌ Proposal \`${id}\` not found.`);
     return;
   }
 
@@ -227,7 +228,7 @@ export async function handleProposalDetail(ctx: Context): Promise<void> {
     details += `\n\nVote: \`/vote ${proposal.id} for\` or \`/vote ${proposal.id} against\``;
   }
 
-  await ctx.reply(details, { parse_mode: "Markdown" });
+  await replyPlain(ctx, details);
 }
 
 /**
@@ -238,14 +239,15 @@ export async function handleActivate(ctx: Context): Promise<void> {
   const id = text.replace(/^\/activate\s*/, "").trim();
 
   if (!id) {
-    await ctx.reply("Usage: `/activate <proposal-ID>`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "Usage: `/activate <proposal-ID>`");
     return;
   }
 
   try {
     const closesAt = new Date(Date.now() + 7 * 24 * 3600_000).toISOString();
     const proposal = activateProposal(id, closesAt);
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `🗳️ *Voting is OPEN!*
 
 📋 *${proposal.title}*
@@ -254,7 +256,6 @@ export async function handleActivate(ctx: Context): Promise<void> {
 Cast your vote:
   \`/vote ${id} for\`
   \`/vote ${id} against\``,
-      { parse_mode: "Markdown" },
     );
   } catch (err) {
     await ctx.reply(`❌ ${err}`);
@@ -269,13 +270,13 @@ export async function handleVote(ctx: Context): Promise<void> {
   const args = text.replace(/^\/vote\s*/, "").trim().split(/\s+/);
 
   if (args.length < 2) {
-    await ctx.reply("Usage: `/vote <proposal-ID> <for|against>`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "Usage: `/vote <proposal-ID> <for|against>`");
     return;
   }
 
   const [proposalId, direction] = args;
   if (direction !== "for" && direction !== "against") {
-    await ctx.reply("❌ Direction must be `for` or `against`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "❌ Direction must be `for` or `against`");
     return;
   }
 
@@ -295,11 +296,11 @@ export async function handleVote(ctx: Context): Promise<void> {
     const total = proposal.votesFor + proposal.votesAgainst;
     const forPct = Math.round((proposal.votesFor / total) * 100);
 
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `✅ Vote recorded: *${direction}* on "${proposal.title}"
 
 📊 Current tally: 👍 ${proposal.votesFor} (${forPct}%) / 👎 ${proposal.votesAgainst} (${100 - forPct}%)`,
-      { parse_mode: "Markdown" },
     );
   } catch (err) {
     await ctx.reply(`❌ ${err}`);
@@ -314,7 +315,7 @@ export async function handleFinalize(ctx: Context): Promise<void> {
   const id = text.replace(/^\/finalize\s*/, "").trim();
 
   if (!id) {
-    await ctx.reply("Usage: `/finalize <proposal-ID>`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "Usage: `/finalize <proposal-ID>`");
     return;
   }
 
@@ -336,7 +337,8 @@ export async function handleFinalize(ctx: Context): Promise<void> {
       }
     }
 
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `${emoji} *Proposal ${proposal.status.toUpperCase()}*
 
 📋 *${proposal.title}*
@@ -345,7 +347,6 @@ export async function handleFinalize(ctx: Context): Promise<void> {
 ${proposal.status === "approved"
   ? "The community has spoken! This proposal will proceed to execution."
   : "The community has decided against this proposal."}${crowdfundingSyncNote}`,
-      { parse_mode: "Markdown" },
     );
   } catch (err) {
     await ctx.reply(`❌ ${err}`);

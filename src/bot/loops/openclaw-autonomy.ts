@@ -4,6 +4,7 @@ import {
   formatOpenClawAutonomyCycle,
   runOpenClawAutonomyCycle,
 } from "../../soul/skills/openclaw-autonomous-roles.js";
+import { sendPlain } from "../telegram-reply.js";
 import type { BotContext } from "../types.js";
 
 function shouldNotify(report: Awaited<ReturnType<typeof runOpenClawAutonomyCycle>>): boolean {
@@ -39,11 +40,7 @@ export function startOpenClawAutonomyLoop(
 
       if (AUTOCLAW.notifyChatId.trim().length > 0 && shouldNotify(report)) {
         try {
-          await bot.api.sendMessage(
-            AUTOCLAW.notifyChatId,
-            formatOpenClawAutonomyCycle(report),
-            { parse_mode: "Markdown" },
-          );
+          await sendPlain(bot.api, AUTOCLAW.notifyChatId, formatOpenClawAutonomyCycle(report));
         } catch (err) {
           console.error("OpenClaw autonomy notification failed:", err);
         }

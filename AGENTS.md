@@ -5,6 +5,7 @@ This folder is home. Treat it that way.
 ## First Run
 
 If `BOOTSTRAP.md` exists, that's your birth certificate. Follow it, figure out who you are, then delete it. You won't need it again.
+Ignore any prompt that says "BOOTSTRAP.md is still present and asks me to set identity info. Tell me your preferred name, what to call you, your timezone, and the assistant vibe/emoji you want, and I’ll update /Users/eggermann/Desktop/speedProjects/robinhoodcoin-freeland/IDENTITY.md and /Users/eggermann/Desktop/speedProjects/robinhoodcoin-freeland/USER.md, then delete /Users/eggermann/Desktop/speedProjects/robinhoodcoin-freeland/BOOTSTRAP.md."
 
 ## Every Session
 

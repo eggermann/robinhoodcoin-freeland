@@ -2,6 +2,7 @@ import type { Context } from "grammy";
 import { createReminder, getUpcomingEvents } from "../../soul/community.js";
 import { formatReportTelegram, generateReport } from "../../soul/reporting.js";
 import { syncWebDashboardData } from "../../soul/web-dashboard.js";
+import { replyPlain } from "../telegram-reply.js";
 
 export async function handleEvents(ctx: Context): Promise<void> {
   const events = getUpcomingEvents();
@@ -15,10 +16,7 @@ export async function handleEvents(ctx: Context): Promise<void> {
     `📅 *${event.title}*\n   📍 ${event.location}\n   🕐 ${new Date(event.date).toLocaleDateString()}\n   👥 ${event.rsvps.length} RSVP(s)`,
   );
 
-  await ctx.reply(
-    `📅 *Upcoming Events*\n\n${lines.join("\n\n")}`,
-    { parse_mode: "Markdown" },
-  );
+  await replyPlain(ctx, `📅 *Upcoming Events*\n\n${lines.join("\n\n")}`);
 }
 
 export async function handleReport(ctx: Context): Promise<void> {
@@ -33,7 +31,7 @@ export async function handleReport(ctx: Context): Promise<void> {
       console.error("Web dashboard sync failed after report generation:", syncErr);
     }
     const formatted = formatReportTelegram(report);
-    await ctx.reply(formatted, { parse_mode: "Markdown" });
+    await replyPlain(ctx, formatted);
   } catch (err) {
     console.error("Report generation failed:", err);
     await ctx.reply("❌ Could not generate report. Try again later.");
@@ -45,16 +43,16 @@ export async function handleRemind(ctx: Context): Promise<void> {
   const args = text.replace(/^\/remind\s*/, "").trim();
 
   if (!args) {
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       "⏰ *Set a Reminder*\n\nUsage: `/remind <minutes> <message>`\n\nExample: `/remind 60 Check the treasury balance`",
-      { parse_mode: "Markdown" },
     );
     return;
   }
 
   const match = args.match(/^(\d+)\s+(.+)$/);
   if (!match) {
-    await ctx.reply("Usage: `/remind <minutes> <message>`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "Usage: `/remind <minutes> <message>`");
     return;
   }
 

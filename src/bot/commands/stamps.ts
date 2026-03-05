@@ -12,6 +12,7 @@ import {
   getMemberProfile,
   recordStampMintForMember,
 } from "../../soul/member-ledger.js";
+import { replyPlain } from "../telegram-reply.js";
 
 export async function handleStamps(ctx: Context): Promise<void> {
   const campaigns = getActiveCampaigns();
@@ -35,10 +36,7 @@ export async function handleStamps(ctx: Context): Promise<void> {
    🎯 Goal: ${campaign.goalSOL} SOL | Raised: ${campaign.raisedSOL} SOL`;
   });
 
-  await ctx.reply(
-    `🎨 *Active Stamp Campaigns*\n\n${lines.join("\n\n")}`,
-    { parse_mode: "Markdown" },
-  );
+  await replyPlain(ctx, `🎨 *Active Stamp Campaigns*\n\n${lines.join("\n\n")}`);
 }
 
 export async function handleTiers(ctx: Context): Promise<void> {
@@ -50,10 +48,7 @@ export async function handleTiers(ctx: Context): Promise<void> {
    Benefits: ${tier.benefits.join("; ")}`;
   });
 
-  await ctx.reply(
-    `🏷️ *Freeland Stamp Tiers*\n\n${lines.join("\n\n")}`,
-    { parse_mode: "Markdown" },
-  );
+  await replyPlain(ctx, `🏷️ *Freeland Stamp Tiers*\n\n${lines.join("\n\n")}`);
 }
 
 export async function handleLands(ctx: Context): Promise<void> {
@@ -230,9 +225,9 @@ export async function handleMember(ctx: Context): Promise<void> {
   const profile = getMemberProfile(userId);
 
   if (!profile) {
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       "No member profile yet. Join chat activity, mint a stamp with `/stampmint`, or vote to create one.",
-      { parse_mode: "Markdown" },
     );
     return;
   }

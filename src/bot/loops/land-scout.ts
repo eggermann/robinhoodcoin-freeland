@@ -4,6 +4,7 @@ import {
   formatScoutReport,
   runAutonomousLandScoutCycle,
 } from "../../soul/skills/autonomous-land-scout.js";
+import { sendPlain } from "../telegram-reply.js";
 import type { BotContext } from "../types.js";
 
 export function startLandScoutLoop(
@@ -37,11 +38,7 @@ export function startLandScoutLoop(
 
       if (AUTOSCOUT.notifyChatId.trim().length > 0) {
         try {
-          await bot.api.sendMessage(
-            AUTOSCOUT.notifyChatId,
-            formatScoutReport(report),
-            { parse_mode: "Markdown" },
-          );
+          await sendPlain(bot.api, AUTOSCOUT.notifyChatId, formatScoutReport(report));
         } catch (err) {
           console.error("Land scout notification failed:", err);
         }

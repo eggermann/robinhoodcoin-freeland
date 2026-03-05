@@ -12,8 +12,16 @@ import { generateSoulPrompt } from "../../shared/charter.js";
 import { queryLandResearchOracle } from "../../soul/skills/land-research-oracle.js";
 import { queryPropertyOracle } from "../../soul/skills/property-oracle.js";
 import { getTreasuryBalanceSnapshot } from "../../soul/skills/treasury-tracker.js";
+import { replyPlain } from "../telegram-reply.js";
+import { logAskFailure } from "../ask-failure-log.js";
+import { logUrlProbe, type UrlProbeRecord } from "../url-probe-log.js";
 
 const MAX_MODEL_TOOL_LOOPS = 3;
+const URL_PROBE_TIMEOUT_MS = 12_000;
+const URL_STATUS_HINT_RE =
+  /\b(alive|up|down|work|working|happen|happening|status|reachable|online|offline|responding|not really|not realy|geht|laeuft|läuft)\b/i;
+
+type UrlProbeResult = UrlProbeRecord["result"];
 
 export interface AskMemoryScope {
   userId: string;
@@ -270,31 +278,144 @@ export async function handleAsk(ctx: Context, question: string): Promise<void> {
     return;
   }
 
+  const scope = getMemoryScope(ctx);
+
+  const url = extractFirstUrl(question);
+  if (url && shouldHandleAsUrlProbe(question, url)) {
+    await ctx.replyWithChatAction("typing");
+    const result = await probeUrl(url);
+    logUrlProbe({ question, url, scope, result });
+    await replyPlain(ctx, formatUrlProbeReport(url, result));
+    return;
+  }
+
   await ctx.replyWithChatAction("typing");
 
-  const scope = getMemoryScope(ctx);
   const memory = await recallMemorySafe(question, scope);
 
   try {
     const answer = await callAI(question, memory, scope);
     await captureMemorySafe({ query: question, answer, scope });
 
-    // Telegram has a 4096 char limit
-    if (answer.length > 4000) {
-      const parts = splitMessage(answer, 4000);
-      for (const part of parts) {
-        await ctx.reply(part, { parse_mode: "Markdown" });
-      }
-    } else {
-      await ctx.reply(answer, { parse_mode: "Markdown" });
-    }
+    await replyPlain(ctx, answer);
   } catch (err) {
-    console.error("AI call failed:", err);
+    const failureId = logAskFailure({
+      question,
+      scope,
+      provider: AI.provider,
+      timeoutMs: AI.provider === "openclaw" ? OPENCLAW.timeoutMs : undefined,
+      runtimeStatus: AI.provider === "openclaw" ? getRuntimeModelStatus() : undefined,
+      error: err,
+    });
+
+    console.error(`AI call failed [${failureId}]:`, err);
     if (err instanceof Error && err.message.startsWith("Unsupported AI_PROVIDER=")) {
       await ctx.reply(`⚠️ ${err.message}`);
       return;
     }
-    await ctx.reply("❌ Sorry, I couldn't process that right now. Try again later.");
+
+    const isTimeout = err instanceof Error && /timeout/i.test(err.message);
+    if (isTimeout) {
+      await ctx.reply(`❌ Gateway timeout while processing the request. Please retry shortly. Ref: ${failureId}`);
+      return;
+    }
+
+    await ctx.reply(`❌ Sorry, I couldn't process that right now. Try again later. Ref: ${failureId}`);
+  }
+}
+
+function extractFirstUrl(text: string): string | null {
+  const match = text.match(/https?:\/\/[^\s<>"')]+/i);
+  if (!match) return null;
+  return match[0].replace(/[.,!?]+$/, "");
+}
+
+function shouldHandleAsUrlProbe(question: string, url: string): boolean {
+  const withoutUrl = question.replace(url, " ").trim();
+  if (!withoutUrl) return true;
+
+  const tokenCount = withoutUrl.split(/\s+/).filter(Boolean).length;
+  if (tokenCount <= 14 && URL_STATUS_HINT_RE.test(withoutUrl)) return true;
+
+  return false;
+}
+
+function extractHtmlTitle(html: string): string | null {
+  const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (!match?.[1]) return null;
+  return match[1].replace(/\s+/g, " ").trim() || null;
+}
+
+function formatUrlProbeReport(url: string, result: UrlProbeResult): string {
+  const lines = [
+    "🌐 URL check",
+    `URL: ${url}`,
+  ];
+
+  if (result.finalUrl) lines.push(`Final URL: ${result.finalUrl}`);
+
+  if (typeof result.status === "number") {
+    lines.push(`HTTP: ${result.status} ${result.ok ? "OK" : "ERROR"}`);
+  }
+
+  if (result.contentType) lines.push(`Content-Type: ${result.contentType}`);
+  if (result.title) lines.push(`Title: ${result.title}`);
+
+  if (result.error) {
+    lines.push(`Result: ${result.error}`);
+  } else if (result.ok === false) {
+    lines.push("Server responded, but with a non-2xx status.");
+  }
+
+  return lines.join("\n");
+}
+
+async function probeUrl(url: string): Promise<UrlProbeResult> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), URL_PROBE_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      signal: controller.signal,
+      headers: {
+        // Keep this lightweight and widely accepted by basic WAFs.
+        "User-Agent": "Mozilla/5.0 (compatible; RobinHoodCoinBot/1.0; +https://freeland.rocks)",
+      },
+    });
+
+    const result: UrlProbeResult = {
+      finalUrl: response.url,
+      status: response.status,
+      ok: response.ok,
+    };
+    const contentType = response.headers.get("content-type");
+    if (contentType) {
+      result.contentType = contentType;
+    }
+
+    if ((contentType ?? "").includes("text/html")) {
+      const html = await response.text();
+      const title = extractHtmlTitle(html.slice(0, 200_000));
+      if (title) result.title = title;
+    }
+
+    return result;
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return {
+        error: `timeout after ${URL_PROBE_TIMEOUT_MS}ms`,
+        timeoutMs: URL_PROBE_TIMEOUT_MS,
+      };
+    }
+
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      error: `request failed (${message})`,
+    };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -748,7 +869,6 @@ function routeToOpenClawAgent(userMessage: string): OpenClawRoute {
       "listing",
       "shortlist",
       "real estate",
-      "freeland",
     ]),
     governance: countHits(normalized, [
       "proposal",
@@ -1039,29 +1159,4 @@ async function callOpenClawWithFallback(
   }
 
   throw new Error(`All runtime models failed. ${errors.join(" | ")}`);
-}
-
-/** Split a long message into chunks at sentence boundaries */
-function splitMessage(text: string, maxLen: number): string[] {
-  const parts: string[] = [];
-  let remaining = text;
-
-  while (remaining.length > maxLen) {
-    // Try to split at a sentence boundary
-    let splitIdx = remaining.lastIndexOf(". ", maxLen);
-    if (splitIdx === -1 || splitIdx < maxLen / 2) {
-      splitIdx = remaining.lastIndexOf("\n", maxLen);
-    }
-    if (splitIdx === -1 || splitIdx < maxLen / 2) {
-      splitIdx = maxLen;
-    } else {
-      splitIdx += 1; // include the period/newline
-    }
-
-    parts.push(remaining.slice(0, splitIdx).trim());
-    remaining = remaining.slice(splitIdx).trim();
-  }
-
-  if (remaining) parts.push(remaining);
-  return parts;
 }

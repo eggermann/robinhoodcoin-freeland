@@ -4,6 +4,7 @@ import {
   formatFinanceReport,
   runAutonomousFinanceCycle,
 } from "../../soul/skills/autonomous-finance-monitor.js";
+import { sendPlain } from "../telegram-reply.js";
 import type { BotContext } from "../types.js";
 
 export function startFinanceMonitorLoop(
@@ -36,11 +37,7 @@ export function startFinanceMonitorLoop(
       const shouldNotify = report.alerts.length > 0 || AUTOFINANCE.notifyOnNoAlert;
       if (shouldNotify && AUTOFINANCE.notifyChatId.trim().length > 0) {
         try {
-          await bot.api.sendMessage(
-            AUTOFINANCE.notifyChatId,
-            formatFinanceReport(report),
-            { parse_mode: "Markdown" },
-          );
+          await sendPlain(bot.api, AUTOFINANCE.notifyChatId, formatFinanceReport(report));
         } catch (err) {
           console.error("Finance monitor notification failed:", err);
         }

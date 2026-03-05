@@ -1,7 +1,9 @@
 import type { Context } from "grammy";
+import { replyPlain } from "../telegram-reply.js";
 
 export async function handleHelp(ctx: Context): Promise<void> {
-  await ctx.reply(
+  await replyPlain(
+    ctx,
     `🏹 *RobinHoodCoin Soul — Commands*
 
 *── Core ──*
@@ -49,6 +51,5 @@ _Every conversation plants a seed. 🌿_
 • Website: robinhoodcoin.org
 • Telegram: t.me/robinhoodcoin
 • GitHub: github.com/robinhoodcoin`,
-    { parse_mode: "Markdown" },
   );
 }

@@ -1,4 +1,5 @@
 import type { Context } from "grammy";
+import { replyPlain } from "../telegram-reply.js";
 
 export async function handleId(ctx: Context): Promise<void> {
   const userId = ctx.from?.id ? String(ctx.from.id) : "unknown";
@@ -15,6 +16,5 @@ export async function handleId(ctx: Context): Promise<void> {
     `Set \`BOT_ADMIN_IDS=${userId}\` in your \`.env\`, then restart the bot.`,
   ];
 
-  await ctx.reply(lines.join("\n"), { parse_mode: "Markdown" });
+  await replyPlain(ctx, lines.join("\n"));
 }
-

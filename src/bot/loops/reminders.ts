@@ -1,5 +1,6 @@
 import type { Bot } from "grammy";
 import { getDueReminders, markReminderFired } from "../../soul/community.js";
+import { sendPlain } from "../telegram-reply.js";
 import type { BotContext } from "../types.js";
 
 export function startReminderLoop(
@@ -10,9 +11,7 @@ export function startReminderLoop(
     const dueReminders = getDueReminders();
     for (const reminder of dueReminders) {
       try {
-        await bot.api.sendMessage(reminder.chatId, `⏰ *Reminder*: ${reminder.message}`, {
-          parse_mode: "Markdown",
-        });
+        await sendPlain(bot.api, reminder.chatId, `⏰ *Reminder*: ${reminder.message}`);
         markReminderFired(reminder.id);
       } catch (err) {
         console.error(`Failed to send reminder ${reminder.id}:`, err);

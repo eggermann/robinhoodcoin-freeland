@@ -5,6 +5,7 @@ import {
   runOpenClawAutonomousExperience,
   type OpenClawAutonomousExperienceReport,
 } from "../../soul/skills/openclaw-autonomous-experience.js";
+import { sendPlain } from "../telegram-reply.js";
 import type { BotContext } from "../types.js";
 
 function shouldNotify(report: OpenClawAutonomousExperienceReport): boolean {
@@ -37,10 +38,10 @@ export function startOpenClawExperienceLoop(
 
       if (AUTOEXPERIENCE.notifyChatId.trim().length > 0 && shouldNotify(report)) {
         try {
-          await bot.api.sendMessage(
+          await sendPlain(
+            bot.api,
             AUTOEXPERIENCE.notifyChatId,
             formatOpenClawAutonomousExperience(report),
-            { parse_mode: "Markdown" },
           );
         } catch (err) {
           console.error("OpenClaw autonomous experience notification failed:", err);

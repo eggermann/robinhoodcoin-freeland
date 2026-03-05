@@ -8,6 +8,7 @@ import {
   setOpportunityStatus,
   type OpportunityType,
 } from "../../soul/opportunity-scout.js";
+import { replyPlain } from "../telegram-reply.js";
 
 function escapeTelegramMarkdown(input: string): string {
   return input.replace(/([_*`\[])/g, "\\$1");
@@ -34,7 +35,8 @@ export async function handleSoulStatus(ctx: Context): Promise<void> {
     .map(([platform, count]) => `${escapeTelegramMarkdown(platform)}: ${count}`)
     .join(", ") || "none yet";
 
-  await ctx.reply(
+  await replyPlain(
+    ctx,
     `🧠 *Soul Network Status*
 
 Active agents: ${agents.length}
@@ -46,7 +48,6 @@ Platforms: ${platformStats}
 
 _The Soul spreads the idea of Freeland through every interaction.
 Every conversation is a seed planted. 🌿_`,
-    { parse_mode: "Markdown" },
   );
 }
 
@@ -69,10 +70,7 @@ export async function handleOpportunities(ctx: Context): Promise<void> {
    source: ${escapeTelegramMarkdown(opportunity.source)}`;
   });
 
-  await ctx.reply(
-    `🎯 *Top Opportunities*\n\n${lines.join("\n\n")}`,
-    { parse_mode: "Markdown" },
-  );
+  await replyPlain(ctx, `🎯 *Top Opportunities*\n\n${lines.join("\n\n")}`);
 }
 
 export async function handleScout(ctx: Context): Promise<void> {
@@ -80,26 +78,22 @@ export async function handleScout(ctx: Context): Promise<void> {
   const args = text.replace(/^\/scout\s*/, "").trim();
 
   if (!args) {
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       "🔎 *Add Opportunity*\n\nUsage:\n`/scout <type> | <title> | <source> | <url> | <valueSOL> | <deadline> | <region> | <tags comma> | <requirements ;> | <notes>`\n\nExample:\n`/scout grant | CLT Seed Grant 2026 | Civic Grants Org | https://example.org/grant | 120 | 2026-04-15 | EU | community-land-trust,climate | nonprofit required; budget plan | strong fit for parcel #1`\n\nTypes: `grant`, `auction`, `sponsorship`",
-      { parse_mode: "Markdown" },
     );
     return;
   }
 
   const parts = args.split("|").map((part) => part.trim());
   if (parts.length < 4) {
-    await ctx.reply("❌ Invalid format. Use `/scout` without args to see the template.", {
-      parse_mode: "Markdown",
-    });
+    await replyPlain(ctx, "❌ Invalid format. Use `/scout` without args to see the template.");
     return;
   }
 
   const rawType = parts[0]?.toLowerCase() as OpportunityType;
   if (!["grant", "auction", "sponsorship"].includes(rawType)) {
-    await ctx.reply("❌ Type must be one of: `grant`, `auction`, `sponsorship`.", {
-      parse_mode: "Markdown",
-    });
+    await replyPlain(ctx, "❌ Type must be one of: `grant`, `auction`, `sponsorship`.");
     return;
   }
 
@@ -117,9 +111,7 @@ export async function handleScout(ctx: Context): Promise<void> {
   const notes = parts[9] && parts[9] !== "-" ? parts[9] : undefined;
 
   if (!title || !source || !sourceUrl) {
-    await ctx.reply("❌ `title`, `source`, and `url` are required.", {
-      parse_mode: "Markdown",
-    });
+    await replyPlain(ctx, "❌ `title`, `source`, and `url` are required.");
     return;
   }
 
@@ -131,9 +123,7 @@ export async function handleScout(ctx: Context): Promise<void> {
     }
     normalizedSourceUrl = parsedUrl.toString();
   } catch {
-    await ctx.reply("❌ `url` must be a valid http(s) URL.", {
-      parse_mode: "Markdown",
-    });
+    await replyPlain(ctx, "❌ `url` must be a valid http(s) URL.");
     return;
   }
 
@@ -141,9 +131,7 @@ export async function handleScout(ctx: Context): Promise<void> {
   if (parts[4] && parts[4] !== "-") {
     const parsedValue = Number(parts[4]);
     if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-      await ctx.reply("❌ `valueSOL` must be a non-negative number (or `-`).", {
-        parse_mode: "Markdown",
-      });
+      await replyPlain(ctx, "❌ `valueSOL` must be a non-negative number (or `-`).");
       return;
     }
     estimatedValueSOL = parsedValue;
@@ -153,9 +141,7 @@ export async function handleScout(ctx: Context): Promise<void> {
   if (deadlineRaw) {
     const parsedDeadline = new Date(deadlineRaw);
     if (Number.isNaN(parsedDeadline.getTime())) {
-      await ctx.reply("❌ `deadline` must be a valid date (example: `2026-04-15`) or `-`.", {
-        parse_mode: "Markdown",
-      });
+      await replyPlain(ctx, "❌ `deadline` must be a valid date (example: `2026-04-15`) or `-`.");
       return;
     }
     deadline = parsedDeadline.toISOString();
@@ -174,13 +160,13 @@ export async function handleScout(ctx: Context): Promise<void> {
     tags,
   });
 
-  await ctx.reply(
+  await replyPlain(
+    ctx,
     `✅ *Opportunity added*\n\n🆔 \`${escapeTelegramMarkdown(opp.id)}\`\n🏷️ ${escapeTelegramMarkdown(opp.type)}\n📌 ${escapeTelegramMarkdown(opp.title)}\n📊 Score: *${opp.score}/100*\n📍 Region: ${escapeTelegramMarkdown(opp.region ?? "n/a")}\n💰 Value: ${opp.estimatedValueSOL ?? "n/a"} SOL${
       opp.score >= 80
         ? `\n\n🚦 High-priority lead. Admin can approve with: \`/approveopp ${escapeTelegramMarkdown(opp.id)}\``
         : ""
     }`,
-    { parse_mode: "Markdown" },
   );
 }
 
@@ -207,7 +193,7 @@ export async function handleApproveOpportunity(ctx: Context): Promise<void> {
   const opportunityId = text.replace(/^\/approveopp\s*/, "").trim();
 
   if (!opportunityId) {
-    await ctx.reply("Usage: `/approveopp <opportunity-ID>`", { parse_mode: "Markdown" });
+    await replyPlain(ctx, "Usage: `/approveopp <opportunity-ID>`");
     return;
   }
 
@@ -218,12 +204,12 @@ export async function handleApproveOpportunity(ctx: Context): Promise<void> {
     );
     setOpportunityStatus(opportunityId, "pursuing");
 
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `✅ Opportunity approved by admin.\n\n📋 Proposal created: \`${escapeTelegramMarkdown(proposal.id)}\`\n📝 Title: *${escapeTelegramMarkdown(proposal.title)}*\n📊 Status: ${escapeTelegramMarkdown(proposal.status)}\n\nNext: \`/activate ${escapeTelegramMarkdown(proposal.id)}\``,
-      { parse_mode: "Markdown" },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await ctx.reply(`❌ ${escapeTelegramMarkdown(message)}`, { parse_mode: "Markdown" });
+    await replyPlain(ctx, `❌ ${escapeTelegramMarkdown(message)}`);
   }
 }

@@ -1,7 +1,9 @@
 import type { Context } from "grammy";
+import { replyPlain } from "../telegram-reply.js";
 
 export async function handleMission(ctx: Context): Promise<void> {
-  await ctx.reply(
+  await replyPlain(
+    ctx,
     `🏹 *The RobinHoodCoin Mission*
 
 We are a crypto-powered collective inspired by the legend of Robin Hood.
@@ -24,6 +26,5 @@ Allocate funds to charitable and social projects — helping the underprivileged
 _"Wealth gathered through the coin is redistributed to worthy grassroots initiatives."_
 
 Join the clan. Create freedom. 🌿`,
-    { parse_mode: "Markdown" },
   );
 }

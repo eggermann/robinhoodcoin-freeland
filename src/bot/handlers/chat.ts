@@ -3,6 +3,7 @@ import type { SoulNetwork } from "../../soul/network.js";
 import { generatePersonalWelcome, matchFAQ } from "../../soul/community.js";
 import { ensureMember, touchMemberActivity } from "../../soul/member-ledger.js";
 import { handleAsk } from "../commands/ask.js";
+import { replyPlain } from "../telegram-reply.js";
 import type { BotContext } from "../types.js";
 
 export interface ChatHandlerOptions {
@@ -24,7 +25,7 @@ export function registerChatHandlers(
         displayName: name,
       });
       const welcome = generatePersonalWelcome(name);
-      await ctx.reply(welcome, { parse_mode: "Markdown" });
+      await replyPlain(ctx, welcome);
 
       soulNet.recordInfluence({
         platform: "telegram",

@@ -1,7 +1,9 @@
 import type { Context } from "grammy";
+import { replyPlain } from "../telegram-reply.js";
 
 export async function handleStart(ctx: Context): Promise<void> {
-  await ctx.reply(
+  await replyPlain(
+    ctx,
     `🏹 *Welcome to the Robin Hood Clan!*
 
 I'm the RobinHoodCoin bot — your guide to the Freeland initiative.
@@ -16,6 +18,5 @@ Here's what I can help with:
   /help — See all commands
 
 Ask me anything about RobinHoodCoin, Freeland Stamps, or the DAO!`,
-    { parse_mode: "Markdown" },
   );
 }

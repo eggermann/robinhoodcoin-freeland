@@ -1,6 +1,7 @@
 import type { Context } from "grammy";
 import { connection } from "../../shared/config.js";
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { replyPlain } from "../telegram-reply.js";
 
 const TREASURY_ADDRESS_RAW = process.env.TREASURY_MULTISIG_ADDRESS ?? "";
 
@@ -53,9 +54,9 @@ export async function handleTreasury(ctx: Context): Promise<void> {
     const cluster = detectCluster(connection.rpcEndpoint);
     const explorerUrl = buildExplorerUrl(treasuryAddress, cluster);
 
-    await ctx.reply(
+    await replyPlain(
+      ctx,
       `💰 *Robin Hood Treasury*\n\nAddress: \`${treasuryAddress}\`\nBalance: *${balanceSol} SOL*\n\n🔗 [View on Solana Explorer](${explorerUrl})`,
-      { parse_mode: "Markdown" },
     );
   } catch (err) {
     console.error("Treasury query failed:", err);

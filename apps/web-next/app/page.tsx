@@ -40,6 +40,9 @@ export default async function HomePage() {
           <strong style={{ color: "#fcd34d" }}>RobinHoodCoin</strong>
           <nav style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 14 }}>
             <a href="#mission" style={{ color: "#9ca3af", textDecoration: "none" }}>Mission</a>
+            <a href="#freeland" style={{ color: "#9ca3af", textDecoration: "none" }}>Freeland</a>
+            <a href="#governance" style={{ color: "#9ca3af", textDecoration: "none" }}>Governance</a>
+            <a href="#charter" style={{ color: "#9ca3af", textDecoration: "none" }}>Charter</a>
             <a href="#how" style={{ color: "#9ca3af", textDecoration: "none" }}>How It Works</a>
             <a href="#stamps" style={{ color: "#9ca3af", textDecoration: "none" }}>Stamps</a>
             <a href="#portfolio" style={{ color: "#9ca3af", textDecoration: "none" }}>Portfolio</a>
@@ -145,6 +148,38 @@ export default async function HomePage() {
       </section>
 
       <section
+        id="freeland"
+        style={{
+          borderRadius: 14,
+          border: "1px solid #334155",
+          background: "#0f1a15",
+          padding: 22,
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>What Is Freeland?</h2>
+        <p style={{ marginTop: 0, color: "#cbd5e1" }}>
+          Freeland is real, physical land purchased by the Robin Hood DAO and designated as a self-governed community commons.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: 10 }}>
+          {[
+            "🏡 Community Living",
+            "🌾 Urban & Rural Farming",
+            "🔧 Hacker Spaces & Maker Labs",
+            "🏛️ Community Centers",
+            "🌳 Nature Conservation",
+            "🏥 Emergency Shelter & Mutual Aid",
+          ].map((item) => (
+            <div key={item} style={{ border: "1px solid #334155", borderRadius: 10, padding: 12, background: "#111827" }}>
+              {item}
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: "12px 0 0", color: "#94a3b8" }}>
+          Each parcel has a local Merry Men council for daily governance, with the DAO ensuring alignment with the charter.
+        </p>
+      </section>
+
+      <section
         id="governance"
         style={{
           borderRadius: 14,
@@ -168,6 +203,28 @@ export default async function HomePage() {
       </section>
 
       <section
+        id="charter"
+        style={{
+          borderRadius: 14,
+          border: "1px solid #334155",
+          background: "#14211b",
+          padding: 22,
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>The Charter — Laws of Robin Hood Coin</h2>
+        <ol style={{ margin: 0, paddingLeft: 18, color: "#cbd5e1" }}>
+          <li>All funds raised must be used exclusively for buying communal land or supporting charitable causes.</li>
+          <li>Every acquired parcel is permanently removed from the speculative market.</li>
+          <li>Decisions are made democratically by RHC token holders.</li>
+          <li>Full transparency: every contribution, expenditure, and decision is publicly trackable on-chain.</li>
+          <li>The project operates in the spirit of Robin Hood: redistribute wealth toward the common good.</li>
+          <li>Each freeland parcel is self-governed by its local community, with strategic oversight by the DAO.</li>
+          <li>Violence, exclusion, and discrimination have no place in any freeland space.</li>
+          <li>The AI Soul serves the mission, not individual interests.</li>
+        </ol>
+      </section>
+
+      <section
         id="how"
         style={{
           borderRadius: 14,
@@ -176,12 +233,28 @@ export default async function HomePage() {
           padding: 22,
         }}
       >
-        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>How It Works</h2>
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Campaign Flow</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 10 }}>
-          <StepCard n="1" title="Get a Stamp" body="Support a campaign and join the member base with verifiable on-chain participation." />
-          <StepCard n="2" title="Vote Proposals" body="Use governance workflows to approve campaigns, parcels, and treasury actions." />
-          <StepCard n="3" title="Acquire Land" body="Execute approved transactions through treasury controls and legal wrappers." />
-          <StepCard n="4" title="Activate Commons" body="Local councils run usage while the DAO enforces charter alignment." />
+          <StepCard
+            n="1"
+            title="Get RHC or a Freeland Stamp"
+            body="Buy RobinHoodCoin (RHC) for governance power, or a Freeland Stamp NFT to fund a specific campaign. RHC can also be earned by volunteering time or skills."
+          />
+          <StepCard
+            n="2"
+            title="Vote on Proposals"
+            body="The community proposes land targets and causes. RHC holders vote. Use the Telegram bot commands /propose and /vote."
+          />
+          <StepCard
+            n="3"
+            title="Land Is Acquired"
+            body="Treasury funds are released via multisig. A legal entity (LLC or foundation) holds the deed on behalf of the DAO."
+          />
+          <StepCard
+            n="4"
+            title="Community Thrives"
+            body="The land becomes a self-governed community space. Local participants form a council, and the Soul coordinates operations."
+          />
         </div>
       </section>
 
@@ -325,13 +398,63 @@ export default async function HomePage() {
           padding: 22,
         }}
       >
-        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Roadmap Focus</h2>
-        <ol style={{ margin: 0, paddingLeft: 18, color: "#cbd5e1" }}>
-          <li>Community activation and proposal participation before close windows.</li>
-          <li>Funding traction and campaign conversion.</li>
-          <li>First acquisition runbook and legal wrapper hardening.</li>
-          <li>Operational rollout for parcel governance and transparency reporting.</li>
-        </ol>
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Roadmap</h2>
+        <div style={{ display: "grid", gap: 12 }}>
+          <RoadmapCard
+            phase="Phase 1 — Foundation"
+            items={[
+              "Core team assembly & charter drafting",
+              "AI Soul bot deployment (Telegram)",
+              "RHC token creation (Solana SPL)",
+              "Multisig treasury setup (Squads v4)",
+              "Website launch",
+            ]}
+            status="done"
+          />
+          <RoadmapCard
+            phase="Phase 2 — Launch & Outreach"
+            items={[
+              "Genesis Stamp NFT sale (1,000 founding stamps)",
+              "Community outreach (Twitter, Reddit, crypto forums)",
+              "AMA sessions and press coverage",
+              "Airdrop RHC to early contributors",
+              "Discord & multi-platform bot deployment",
+            ]}
+            status="active"
+          />
+          <RoadmapCard
+            phase="Phase 3 — First Acquisition"
+            items={[
+              "Scout land opportunities via Little John agent",
+              "Community vote on target property",
+              "Legal entity setup (LLC or foundation)",
+              "Execute purchase via multisig",
+              "Announce Freeland Parcel #1",
+            ]}
+            status="next"
+          />
+          <RoadmapCard
+            phase="Phase 4 — Develop & Celebrate"
+            items={[
+              "Build infrastructure on the parcel",
+              "Form local Merry Men council",
+              "Open community workdays & events",
+              "Document with photos, video, and reports",
+            ]}
+            status="next"
+          />
+          <RoadmapCard
+            phase="Phase 5 — Scale"
+            items={[
+              "Launch Parcel #2 campaign",
+              "Partner with aligned DAOs & land trusts",
+              "Expand Soul network to new platforms",
+              "Decentralized identity (Robin Hood Passport)",
+              "Global network of freeland nodes",
+            ]}
+            status="next"
+          />
+        </div>
       </section>
     </main>
   );
@@ -420,6 +543,20 @@ function StampCard({
         ))}
       </ul>
       <strong style={{ color: "#fcd34d" }}>{price}</strong>
+    </article>
+  );
+}
+
+function RoadmapCard({ phase, items, status }: { phase: string; items: string[]; status: "done" | "active" | "next" }) {
+  const accent = status === "done" ? "#86efac" : status === "active" ? "#fcd34d" : "#94a3b8";
+  return (
+    <article style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+      <div style={{ color: accent, fontWeight: 700, marginBottom: 8 }}>{phase}</div>
+      <ul style={{ margin: 0, paddingLeft: 18, color: "#cbd5e1", fontSize: 14 }}>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </article>
   );
 }

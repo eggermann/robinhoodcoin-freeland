@@ -5,6 +5,8 @@ import { isVerifiedParcel } from "../lib/parcels";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL ?? "https://t.me/robinhoodcoin";
+  const paypalSupportUrl = process.env.NEXT_PUBLIC_PAYPAL_SUPPORT_URL ?? "";
   const [trackedLeads, topParcel, cheapestParcel, shortlist] = await Promise.all([
     db.parcel.count(),
     db.parcel.findFirst({
@@ -54,6 +56,7 @@ export default async function HomePage() {
             <a href="#freeland" style={{ color: "#9ca3af", textDecoration: "none" }}>Freeland</a>
             <a href="#governance" style={{ color: "#9ca3af", textDecoration: "none" }}>Governance</a>
             <a href="#team" style={{ color: "#9ca3af", textDecoration: "none" }}>Team</a>
+            <a href="#community" style={{ color: "#9ca3af", textDecoration: "none" }}>Community</a>
             <a href="#charter" style={{ color: "#9ca3af", textDecoration: "none" }}>Charter</a>
             <a href="#how" style={{ color: "#9ca3af", textDecoration: "none" }}>How It Works</a>
             <a href="#stamps" style={{ color: "#9ca3af", textDecoration: "none" }}>Stamps</a>
@@ -299,7 +302,7 @@ export default async function HomePage() {
           <StepCard
             n="1"
             title="Get RHC or a Freeland Stamp"
-            body="Buy RobinHoodCoin (RHC) for governance power, or a Freeland Stamp NFT to fund a specific campaign. RHC can also be earned by volunteering time or skills."
+            body="RHC is the governance layer. Freeland Stamps are campaign collectibles that fund parcels directly. Both are participation tools, not isolated products."
           />
           <StepCard
             n="2"
@@ -320,6 +323,82 @@ export default async function HomePage() {
       </section>
 
       <section
+        id="community"
+        style={{
+          borderRadius: 14,
+          border: "1px solid #334155",
+          background: "#0f1a15",
+          padding: 22,
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Community, Collectors, and Social Space</h2>
+        <p style={{ marginTop: 0, color: "#cbd5e1", maxWidth: 920 }}>
+          The system works best when funding, governance, collecting, and discussion stay connected. A stamp should not end as a dead collectible,
+          and a parcel should not live without community conversation around it.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
+          <FeatureCard
+            title="Collectors Become Backers"
+            body="Stamp collectors are parcel backers. Their mint activity should flow into campaigns, visible support, and governance weight."
+          />
+          <FeatureCard
+            title="Discussion Lives With Land"
+            body="Every parcel detail page is also a discussion surface for due diligence, local knowledge, and ideas for future community use."
+          />
+          <FeatureCard
+            title="Soul Organizes Context"
+            body="Sherwood and the Soul connect scout leads, member questions, campaigns, and movement updates so the system feels alive rather than fragmented."
+          />
+        </div>
+        <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a
+            href={communityUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-block",
+              background: "#4caf50",
+              color: "#04120a",
+              padding: "10px 16px",
+              borderRadius: 10,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Join Community Chat
+          </a>
+          <Link
+            href="/movement"
+            style={{
+              display: "inline-block",
+              border: "1px solid #4caf50",
+              color: "#4caf50",
+              padding: "10px 16px",
+              borderRadius: 10,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Read Movement Feed
+          </Link>
+          <Link
+            href="/soul"
+            style={{
+              display: "inline-block",
+              border: "1px solid #fcd34d",
+              color: "#fcd34d",
+              padding: "10px 16px",
+              borderRadius: 10,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Open Soul Console
+          </Link>
+        </div>
+      </section>
+
+      <section
         id="stamps"
         style={{
           borderRadius: 14,
@@ -330,8 +409,25 @@ export default async function HomePage() {
       >
         <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Freeland Stamps</h2>
         <p style={{ color: "#9ca3af", marginTop: 0 }}>
-          Collectible NFTs that fund freedom. Each stamp is a badge of contribution and proof that you helped buy land for the commons.
+          Freeland Stamps are the collector-facing funding rail for parcels. They should connect minting, public support, social identity, and governance context around real land campaigns.
         </p>
+        <div style={{ marginBottom: 14, border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+          <h3 style={{ marginTop: 0, color: "#fcd34d" }}>How Stamps and RobinHoodCoin Fit Together</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
+            <FeatureCard
+              title="RHC"
+              body="Governance, proposals, treasury signaling, and long-term participation weight."
+            />
+            <FeatureCard
+              title="Stamps"
+              body="Campaign-level funding, collector identity, visible support for a specific parcel or mission."
+            />
+            <FeatureCard
+              title="Soul + Sherwood"
+              body="The coordination layer that explains campaigns, answers questions, and keeps collectors, voters, and scout discussions connected."
+            />
+          </div>
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
           <StampCard
             name="Genesis Stamp"
@@ -365,10 +461,24 @@ export default async function HomePage() {
 
         <div style={{ marginTop: 18, border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
           <h3 style={{ marginTop: 0, color: "#fcd34d" }}>Active Campaigns</h3>
-          <p style={{ margin: 0, color: "#94a3b8" }}>No active campaigns yet. Create the first with `/landstamp` or the fusion driver.</p>
+          <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
+            No public stamp sale is live yet. The minting machinery exists, but the community-facing campaign layer still needs tighter rollout and storytelling.
+          </p>
+          <p style={{ margin: 0, color: "#cbd5e1" }}>
+            Next milestone: launch a parcel-linked stamp campaign that clearly shows target land, funding goal, minted supply, collector rewards, and discussion flow.
+          </p>
         </div>
 
         <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
+          <div style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+            <h4 style={{ marginTop: 0 }}>Collectors & Discussion</h4>
+            <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
+              Supporters should be able to collect stamps, discuss parcels, and follow the social life of each campaign in one connected flow.
+            </p>
+            <a href={communityUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+              Open Community Chat →
+            </a>
+          </div>
           <div style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
             <h4 style={{ marginTop: 0 }}>Land Objects Gallery</h4>
             <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
@@ -386,6 +496,21 @@ export default async function HomePage() {
             <Link href="/voting" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
               Open Votings →
             </Link>
+          </div>
+          <div style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+            <h4 style={{ marginTop: 0 }}>Support Operations</h4>
+            <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
+              Direct support rails can sit beside on-chain funding, but only through a deliberate public link. The site is ready for a public PayPal support button when configured.
+            </p>
+            {paypalSupportUrl ? (
+              <a href={paypalSupportUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+                Support via PayPal →
+              </a>
+            ) : (
+              <a href={communityUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+                Request support link in chat →
+              </a>
+            )}
           </div>
         </div>
       </section>

@@ -3,6 +3,7 @@ import { getPortfolio, type FreelandParcel } from "../soul/reporting.js";
 import { getLandSearchManager, type LandListing } from "../soul/land-search.js";
 import semanticStream from "semantic-stream";
 import { buildSemanticStampArtworkPrompt } from "./semantic-stamp-style.js";
+import { buildSemanticSeedPlan, type SemanticSeedPlan } from "./semantic-stamp-seeds.js";
 
 type LandSource = "portfolio" | "shortlist";
 
@@ -38,6 +39,7 @@ export interface LandStampBatchResult {
   campaign: StampCampaign;
   selectedLand: SelectableLand;
   wikiTopic: DailyWikiTopic;
+  seedPlan: SemanticSeedPlan;
   semanticPhrases: string[];
   valueSOL: number;
   prompt: string;
@@ -46,6 +48,7 @@ export interface LandStampBatchResult {
 export interface LandStampPreview {
   selectedLand: SelectableLand;
   wikiTopic: DailyWikiTopic;
+  seedPlan: SemanticSeedPlan;
   semanticPhrases: string[];
   valueSOL: number;
   goalSOL: number;
@@ -295,10 +298,11 @@ export async function previewLandStampBatch(
 ): Promise<LandStampPreview> {
   const selectedLand = resolveSelectedLand(input.selectedLandId);
   const language = (input.language ?? "en").trim() || "en";
+  const seedPlan = buildSemanticSeedPlan(selectedLand);
 
   const wikiTopic = await fetchDailyWikiTopic(language);
   const semanticPhrases = await getSemanticMotifPhrases(
-    wikiTopic.title,
+    seedPlan.primarySeed,
     language,
     DEFAULT_PHRASE_COUNT,
   );
@@ -338,12 +342,15 @@ export async function previewLandStampBatch(
     wikiTitle: wikiTopic.title,
     wikiExtract: wikiTopic.extract,
     wikiDate: wikiTopic.date,
+    seedPhrases: seedPlan.seedPhrases,
+    curationNotes: seedPlan.curationNotes,
     semanticPhrases,
   });
 
   return {
     selectedLand,
     wikiTopic,
+    seedPlan,
     semanticPhrases,
     valueSOL,
     goalSOL,
@@ -379,9 +386,10 @@ export async function previewManualSemanticStampConcept(
     legalBufferPct: DEFAULT_LEGAL_BUFFER_PCT,
   }).catch(async () => {
     const language = (input.language ?? "en").trim() || "en";
+    const seedPlan = buildSemanticSeedPlan(selectedLand);
     const wikiTopic = await fetchDailyWikiTopic(language);
     const semanticPhrases = await getSemanticMotifPhrases(
-      wikiTopic.title,
+      seedPlan.primarySeed,
       language,
       DEFAULT_PHRASE_COUNT,
     );
@@ -402,6 +410,7 @@ export async function previewManualSemanticStampConcept(
     return {
       selectedLand,
       wikiTopic,
+      seedPlan,
       semanticPhrases,
       valueSOL,
       goalSOL,
@@ -419,6 +428,8 @@ export async function previewManualSemanticStampConcept(
         wikiTitle: wikiTopic.title,
         wikiExtract: wikiTopic.extract,
         wikiDate: wikiTopic.date,
+        seedPhrases: seedPlan.seedPhrases,
+        curationNotes: seedPlan.curationNotes,
         semanticPhrases,
       }),
     };
@@ -449,6 +460,7 @@ export async function createLandStampBatch(
     campaign,
     selectedLand: preview.selectedLand,
     wikiTopic: preview.wikiTopic,
+    seedPlan: preview.seedPlan,
     semanticPhrases: preview.semanticPhrases,
     valueSOL: preview.valueSOL,
     prompt: preview.prompt,

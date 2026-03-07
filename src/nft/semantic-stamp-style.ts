@@ -11,12 +11,16 @@ export interface SemanticStampPromptInput {
   wikiTitle: string;
   wikiExtract: string;
   wikiDate: string;
+  seedPhrases: string[];
+  curationNotes: string[];
   semanticPhrases: string[];
 }
 
 export function buildSemanticStampArtworkPrompt(input: SemanticStampPromptInput): string {
   const motifs = input.semanticPhrases.slice(0, 8).join(", ");
   const features = input.features.slice(0, 8).join(", ") || "community use";
+  const curatedSeeds = input.seedPhrases.slice(0, 8).join(", ");
+  const curationNotes = input.curationNotes.join(" ");
 
   return [
     `Create a high-quality used postage stamp artwork for the Freeland campaign "${input.landName}".`,
@@ -24,7 +28,9 @@ export function buildSemanticStampArtworkPrompt(input: SemanticStampPromptInput)
     `Subject anchor: ${input.landName} (${input.landId}) in ${input.location}.`,
     `Land facts: ${input.sizeAcres} acres, target land price ${input.landPriceSOL} SOL, campaign goal ${input.goalSOL} SOL, stamp value ${input.valueSOL} SOL, max supply ${input.maxSupply}.`,
     `Parcel features: ${features}.`,
-    `Semantic stream source: Wikipedia topic "${input.wikiTitle}" (${input.wikiDate}).`,
+    `Curated semantic seed set: ${curatedSeeds}.`,
+    `Curation notes: ${curationNotes}`,
+    `Secondary topical reference: Wikipedia topic "${input.wikiTitle}" (${input.wikiDate}).`,
     `Topic summary: ${input.wikiExtract || "n/a"}.`,
     `Semantic motifs to fuse visually or symbolically: ${motifs}.`,
     "Visual grammar from semantic-stream stamp experiments: monochrome or duotone engraving, bold border text, emblematic central figure or symbolic object, surreal but coherent motif fusion.",

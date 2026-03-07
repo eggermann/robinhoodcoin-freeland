@@ -118,6 +118,7 @@ export async function handleLandStamp(ctx: Context): Promise<void> {
     });
 
     const motifs = result.semanticPhrases.slice(0, 6).join(" | ");
+    const seedSet = result.seedPlan.seedPhrases.slice(0, 6).join(" | ");
     const promptPreview = result.prompt.slice(0, 300).replace(/\n/g, " ");
 
     await ctx.reply(
@@ -130,6 +131,8 @@ Supply: ${result.campaign.maxSupply}
 Value per stamp: ${result.valueSOL} SOL
 Goal: ${result.campaign.goalSOL} SOL
 
+Curated seed set: ${seedSet}
+Primary semantic seed: ${result.seedPlan.primarySeed}
 Daily Wikipedia topic: ${result.wikiTopic.title}
 Topic URL: ${result.wikiTopic.canonicalUrl}
 Semantic motifs: ${motifs}

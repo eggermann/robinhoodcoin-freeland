@@ -53,6 +53,7 @@ export default async function HomePage() {
             <a href="#mission" style={{ color: "#9ca3af", textDecoration: "none" }}>Mission</a>
             <a href="#freeland" style={{ color: "#9ca3af", textDecoration: "none" }}>Freeland</a>
             <a href="#governance" style={{ color: "#9ca3af", textDecoration: "none" }}>Governance</a>
+            <a href="#team" style={{ color: "#9ca3af", textDecoration: "none" }}>Team</a>
             <a href="#charter" style={{ color: "#9ca3af", textDecoration: "none" }}>Charter</a>
             <a href="#how" style={{ color: "#9ca3af", textDecoration: "none" }}>How It Works</a>
             <a href="#stamps" style={{ color: "#9ca3af", textDecoration: "none" }}>Stamps</a>
@@ -211,6 +212,55 @@ export default async function HomePage() {
         <p style={{ margin: "12px 0 0", color: "#94a3b8" }}>
           Land purchases above 10,000 SOL require a full DAO vote.
         </p>
+      </section>
+
+      <section
+        id="team"
+        style={{
+          borderRadius: 14,
+          border: "1px solid #334155",
+          background: "#14211b",
+          padding: 22,
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Team / Sherwood</h2>
+        <p style={{ marginTop: 0, color: "#cbd5e1", maxWidth: 860 }}>
+          RobinHoodCoin is the public movement, treasury, and governance layer. Sherwood is the AI operations layer:
+          the Soul Console, scouting workflows, and practical support systems that help the movement execute.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 12 }}>
+          <FeatureCard
+            title="RobinHoodCoin"
+            body="The public initiative. It handles mission, fundraising, token governance, land acquisition, and the DAO-facing narrative."
+          />
+          <FeatureCard
+            title="Sherwood"
+            body="The operational intelligence layer. It runs the AI soul, scout loops, runbooks, and the support console for day-to-day execution."
+          />
+          <FeatureCard
+            title="Merry Men Council"
+            body="The human stewardship layer. Contributors, organizers, and local councils shape use of land, proposals, and community norms."
+          />
+        </div>
+        <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 12 }}>
+          <article style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+            <h3 style={{ margin: "0 0 6px" }}>What Sherwood Is Not</h3>
+            <p style={{ margin: 0, color: "#94a3b8" }}>
+              Sherwood is not a separate company or public token brand. It is the internal operating face of the RobinHoodCoin mission.
+            </p>
+          </article>
+          <article style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
+            <h3 style={{ margin: "0 0 6px" }}>Public Entry Points</h3>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Link href="/soul" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+                Open Sherwood →
+              </Link>
+              <Link href="/movement" style={{ color: "#4ade80", textDecoration: "none", fontWeight: 700 }}>
+                Open Movement →
+              </Link>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section

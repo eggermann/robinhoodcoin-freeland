@@ -23,6 +23,10 @@ import {
   runOpenClawDaoUserStampDriver,
   type OpenClawFusionReport,
 } from "./openclaw-dao-user-stamp-driver.js";
+import {
+  syncLandSearchIntoPrisma,
+  type PrismaLandSyncReport,
+} from "../../tools/sync-land-search-to-prisma.js";
 
 export interface OpenClawAutonomousExperienceConfig {
   roleCycle: OpenClawAutonomyConfig;
@@ -34,6 +38,7 @@ export interface OpenClawAutonomousExperienceReport {
   startedAt: string;
   finishedAt: string;
   landScout: AutonomousLandScoutReport;
+  prismaSync: PrismaLandSyncReport | null;
   financeMonitor: AutonomousFinanceReport;
   roleCycle: OpenClawAutonomyCycleReport;
   fusion: OpenClawFusionReport;
@@ -195,6 +200,24 @@ export async function runOpenClawAutonomousExperience(
       return fallbackLandScoutReport(message);
     });
 
+  const prismaSync = await syncLandSearchIntoPrisma()
+    .catch((err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      errors.push(`prisma-sync: ${message}`);
+      return {
+        ok: false,
+        synced: 0,
+        shortlisted: 0,
+        stdout: "",
+        stderr: "",
+        error: message,
+      };
+    });
+
+  if (!prismaSync.ok) {
+    errors.push(`prisma-sync: ${(prismaSync.error ?? prismaSync.stderr) || "unknown sync failure"}`);
+  }
+
   const financeMonitor = await runAutonomousFinanceCycle(config.financeMonitor)
     .catch((err) => {
       const message = err instanceof Error ? err.message : String(err);
@@ -220,6 +243,7 @@ export async function runOpenClawAutonomousExperience(
   const topActions = actionList.slice(0, 8);
   const topAlerts = [
     ...landScoutAlerts(landScout),
+    ...(prismaSync.ok ? [] : [`prisma-sync: ${(prismaSync.error ?? prismaSync.stderr) || "failed"}`]),
     ...financeAlerts(financeMonitor),
     ...roleAlerts(roleCycle),
     ...fusionAlerts(fusion),
@@ -229,6 +253,7 @@ export async function runOpenClawAutonomousExperience(
     startedAt,
     finishedAt: new Date().toISOString(),
     landScout,
+    prismaSync,
     financeMonitor,
     roleCycle,
     fusion,
@@ -261,6 +286,9 @@ export function formatOpenClawAutonomousExperience(
   const landLine = report.landScout.error
     ? `❌ land-scout failed: ${report.landScout.error}`
     : `✅ land-scout: added ${report.landScout.added}, shortlisted ${report.landScout.shortlisted}, rejected ${report.landScout.rejected}`;
+  const syncLine = report.prismaSync && report.prismaSync.ok
+    ? `🗃️ prisma sync: ${report.prismaSync.synced} listings mirrored (${report.prismaSync.shortlisted} shortlisted)`
+    : `❌ prisma sync failed: ${report.prismaSync?.error ?? report.prismaSync?.stderr ?? "not run"}`;
 
   const financeLine = report.financeMonitor.error
     ? `❌ finance failed: ${report.financeMonitor.error}`
@@ -288,6 +316,7 @@ export function formatOpenClawAutonomousExperience(
     `Duration: ${durationSec}s`,
     `Policy: ${treasuryPolicy}`,
     landLine,
+    syncLine,
     financeLine,
     roleLine,
     fusionLine,

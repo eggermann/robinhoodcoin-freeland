@@ -1,8 +1,16 @@
 import Link from "next/link";
+import { db } from "../../lib/db";
+import { formatParcelFacts, getParcelDisplayImage, isVerifiedParcel } from "../../lib/parcels";
 
 export const dynamic = "force-dynamic";
 
-export default function LandPage() {
+export default async function LandPage() {
+  const parcels = await db.parcel.findMany({
+    orderBy: [{ score: "desc" }, { createdAt: "desc" }],
+    take: 12,
+  });
+  const verifiedParcels = parcels.filter(isVerifiedParcel);
+
   return (
     <section style={{ display: "grid", gap: 20 }}>
       <header style={{ borderRadius: 16, border: "1px solid #2a3a2e", padding: 24, background: "#0f1a15" }}>
@@ -22,9 +30,9 @@ export default function LandPage() {
       </header>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-        {LAND_CARDS.map((card) => (
-          <article key={card.title} style={{ border: "1px solid #1f2937", borderRadius: 12, overflow: "hidden", background: "#0b1210" }}>
-            <img src={card.image} alt={card.title} style={{ width: "100%", height: 180, objectFit: "cover" }} loading="lazy" />
+        {verifiedParcels.map((parcel) => (
+          <article key={parcel.id} style={{ border: "1px solid #1f2937", borderRadius: 12, overflow: "hidden", background: "#0b1210" }}>
+            <img src={getParcelDisplayImage(parcel)} alt={parcel.title} style={{ width: "100%", height: 180, objectFit: "cover" }} loading="lazy" />
             <div style={{ padding: 14 }}>
               <span
                 style={{
@@ -32,51 +40,30 @@ export default function LandPage() {
                   padding: "4px 10px",
                   borderRadius: 999,
                   fontSize: 12,
-                  background: card.badgeColor,
+                  background: parcel.score != null && parcel.score >= 75 ? "#fcd34d" : "#a7f3d0",
                   color: "#0a0f0d",
                   fontWeight: 700,
                 }}
               >
-                {card.badge}
+                {parcel.score != null && parcel.score >= 75 ? "Strong Buy" : "Consider"}
               </span>
-              <h3 style={{ margin: "10px 0 6px" }}>{card.title}</h3>
-              <p style={{ margin: "0 0 6px", color: "#94a3b8", fontSize: 13 }}>{card.meta}</p>
-              <p style={{ margin: 0, color: "#cbd5e1", fontSize: 14 }}>{card.body}</p>
+              <h3 style={{ margin: "10px 0 6px" }}>{parcel.title}</h3>
+              <p style={{ margin: "0 0 6px", color: "#94a3b8", fontSize: 13 }}>{parcel.location}</p>
+              <p style={{ margin: "0 0 6px", color: "#cbd5e1", fontSize: 14 }}>{formatParcelFacts(parcel)} · Score {parcel.score ?? "?"}</p>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Link href={`/portfolios/${parcel.id}`} style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>Open details →</Link>
+                {parcel.sourceUrl ? <a href={parcel.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#86efac" }}>Source ↗</a> : null}
+              </div>
             </div>
           </article>
         ))}
       </section>
 
       <p style={{ color: "#94a3b8", margin: 0 }}>
-        Next step: connect this page to the live shortlist feed so new scout opportunities auto-appear.
+        {verifiedParcels.length > 0
+          ? "This gallery is now driven by live parcel-level records from Prisma."
+          : "No parcel-level listings are synced yet. Run the scout pipeline or seed the DB to populate this gallery."}
       </p>
     </section>
   );
 }
-
-const LAND_CARDS = [
-  {
-    badge: "Strong Buy",
-    badgeColor: "#fcd34d",
-    title: "LAND-MM418QHX — Los Lunas, NM",
-    meta: "5.00 acres · 130 SOL · agricultural",
-    body: "Livestock + farming allowed. Commuter access from town makes this a practical first parcel.",
-    image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    badge: "Strong Buy",
-    badgeColor: "#fcd34d",
-    title: "LAND-MM418QFJ — Red Hill, NM",
-    meta: "5.68 acres · 119 SOL · rural",
-    body: "Power nearby, road access, low entry price. Good candidate for an off-grid pilot community node.",
-    image: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1200&auto=format&fit=crop",
-  },
-  {
-    badge: "Consider",
-    badgeColor: "#a7f3d0",
-    title: "LAND-MM418QGQ — Fort Garland, CO",
-    meta: "5.36 acres · 99.97 SOL · residential",
-    body: "Buildable parcel with mountain views and no HOA. Needs legal check for non-commercial charter fit.",
-    image: "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=1200&auto=format&fit=crop",
-  },
-];

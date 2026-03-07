@@ -1,19 +1,30 @@
 import Link from "next/link";
 import { db } from "../lib/db";
+import { isVerifiedParcel } from "../lib/parcels";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [totalParcels, topParcel, shortlist] = await Promise.all([
+  const [trackedLeads, topParcel, cheapestParcel, shortlist] = await Promise.all([
     db.parcel.count(),
     db.parcel.findFirst({
-      orderBy: { score: "desc" },
-      select: { priceUsd: true, score: true, title: true },
+      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
+      select: { score: true },
+    }),
+    db.parcel.findFirst({
+      where: { priceUsd: { not: null } },
+      orderBy: [{ priceUsd: "asc" }, { score: "desc" }, { createdAt: "desc" }],
+      select: { priceUsd: true },
     }),
     db.parcel.findMany({
+      where: {
+        priceUsd: { not: null },
+        sizeAcres: { not: null },
+        status: { not: "lane" },
+      },
       orderBy: [{ score: "desc" }, { createdAt: "desc" }],
       take: 3,
-      select: { id: true, title: true, location: true, score: true },
+      select: { id: true, title: true, location: true, score: true, status: true, sizeAcres: true, priceUsd: true },
     }),
   ]);
 
@@ -114,9 +125,9 @@ export default async function HomePage() {
       </section>
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-        <StatCard label="Active Parcels" value={String(totalParcels)} color="#fcd34d" />
+        <StatCard label="Tracked Leads" value={String(trackedLeads)} color="#fcd34d" />
         <StatCard label="Top Score" value={topParcel?.score?.toString() ?? "?"} color="#4ade80" />
-        <StatCard label="Best Price" value={`$${topParcel?.priceUsd?.toLocaleString() ?? "?"}`} color="#60a5fa" />
+        <StatCard label="Lowest Known Price" value={`$${cheapestParcel?.priceUsd?.toLocaleString() ?? "?"}`} color="#60a5fa" />
         <StatCard label="Platform" value="Live" color="#f472b6" />
       </section>
 
@@ -340,10 +351,10 @@ export default async function HomePage() {
       >
         <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Portfolio Snapshot</h2>
         <p style={{ color: "#9ca3af", marginTop: 0 }}>
-          Live shortlist preview pulled from Prisma. Open the full dataset for comments and source links.
+          Verified parcel-level listings from Prisma. Lane-level leads stay in the portfolio feed until parcel details are confirmed.
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 10 }}>
-          {shortlist.map((parcel) => (
+          {shortlist.filter(isVerifiedParcel).map((parcel) => (
             <article key={parcel.id} style={{ border: "1px solid #334155", borderRadius: 10, padding: 12, background: "#111827" }}>
               <strong>{parcel.title}</strong>
               <p style={{ margin: "4px 0", color: "#94a3b8", fontSize: 14 }}>{parcel.location}</p>
@@ -353,8 +364,8 @@ export default async function HomePage() {
               </Link>
             </article>
           ))}
-          {shortlist.length === 0 ? (
-            <p style={{ color: "#9ca3af" }}>No parcels in DB yet. Seed and refresh.</p>
+          {shortlist.filter(isVerifiedParcel).length === 0 ? (
+            <p style={{ color: "#9ca3af" }}>No parcel-level listings synced yet. Scout leads are still visible in the portfolio feed.</p>
           ) : null}
         </div>
         <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>

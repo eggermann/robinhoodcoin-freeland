@@ -147,6 +147,14 @@ async function runDaemonCycle(): Promise<DaemonCycleSummary> {
           checks: [],
           error: message,
         },
+        prismaSync: {
+          ok: false,
+          synced: 0,
+          shortlisted: 0,
+          stdout: "",
+          stderr: "",
+          error: message,
+        },
         financeMonitor: {
           startedAt,
           finishedAt: startedAt,

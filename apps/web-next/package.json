@@ -10,7 +10,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
     "prisma:seed": "tsx prisma/seed.ts",
-    "prisma:import:candidates": "tsx prisma/import-from-json.ts"
+    "prisma:import:candidates": "tsx prisma/import-from-json.ts",
+    "prisma:sync:land-search": "tsx prisma/sync-land-search.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

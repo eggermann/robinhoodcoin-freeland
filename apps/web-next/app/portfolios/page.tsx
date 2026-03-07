@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { db } from "../../lib/db";
+import { formatParcelFacts, getParcelDisplayImage, isLaneLead } from "../../lib/parcels";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,15 @@ interface RuntimeSnapshot {
   urlProbeEvents24h: number;
   askFailureEvents24h: number;
   logFiles: string[];
+  landScoutLastStatus: "ok" | "failed" | "never";
+  landScoutLastFinishedAt: string | null;
+  landScoutLastReceived: number;
+  landScoutLastAdded: number;
+  landScoutLastShortlisted: number;
+  landScoutFailures24h: number;
+  landScoutAdded24h: number;
+  trackedListings: number;
+  trackedShortlist: number;
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -129,6 +139,76 @@ async function loadRuntimeSnapshot(): Promise<RuntimeSnapshot> {
     countJsonlEvents24h(askFailureCandidates),
   ]);
 
+  const scoutLogCandidates = [
+    path.join(cwd, "data", "land-search", "autonomous-scout-log.jsonl"),
+    path.join(rootGuess, "data", "land-search", "autonomous-scout-log.jsonl"),
+    home ? path.join(home, "robinhoodcoin-freeland", "data", "land-search", "autonomous-scout-log.jsonl") : "",
+  ].filter(Boolean) as string[];
+
+  const listingCandidates = [
+    path.join(cwd, "data", "land-search", "listings.json"),
+    path.join(rootGuess, "data", "land-search", "listings.json"),
+    home ? path.join(home, "robinhoodcoin-freeland", "data", "land-search", "listings.json") : "",
+  ].filter(Boolean) as string[];
+
+  const shortlistCandidates = [
+    path.join(cwd, "data", "land-search", "shortlist.json"),
+    path.join(rootGuess, "data", "land-search", "shortlist.json"),
+    home ? path.join(home, "robinhoodcoin-freeland", "data", "land-search", "shortlist.json") : "",
+  ].filter(Boolean) as string[];
+
+  const scoutLines = await readFirstExistingLines(scoutLogCandidates);
+  const scoutSinceMs = Date.now() - 24 * 60 * 60 * 1000;
+  let landScoutLastStatus: RuntimeSnapshot["landScoutLastStatus"] = "never";
+  let landScoutLastFinishedAt: string | null = null;
+  let landScoutLastReceived = 0;
+  let landScoutLastAdded = 0;
+  let landScoutLastShortlisted = 0;
+  let landScoutFailures24h = 0;
+  let landScoutAdded24h = 0;
+
+  for (const line of scoutLines) {
+    try {
+      const parsed = JSON.parse(line) as {
+        finishedAt?: string;
+        added?: number;
+        shortlisted?: number;
+        received?: number;
+        error?: string;
+      };
+      const finishedAtMs = parsed.finishedAt ? Date.parse(parsed.finishedAt) : NaN;
+      if (Number.isFinite(finishedAtMs) && finishedAtMs >= scoutSinceMs) {
+        landScoutAdded24h += parsed.added ?? 0;
+        if (parsed.error) landScoutFailures24h += 1;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  for (let i = scoutLines.length - 1; i >= 0; i -= 1) {
+    try {
+      const parsed = JSON.parse(scoutLines[i]) as {
+        finishedAt?: string;
+        received?: number;
+        added?: number;
+        shortlisted?: number;
+        error?: string;
+      };
+      landScoutLastStatus = parsed.error ? "failed" : "ok";
+      landScoutLastFinishedAt = parsed.finishedAt ?? null;
+      landScoutLastReceived = parsed.received ?? 0;
+      landScoutLastAdded = parsed.added ?? 0;
+      landScoutLastShortlisted = parsed.shortlisted ?? 0;
+      break;
+    } catch {
+      continue;
+    }
+  }
+
+  const trackedListings = await readFirstExistingJsonCount(listingCandidates);
+  const trackedShortlist = await readFirstExistingJsonCount(shortlistCandidates);
+
   return {
     timeoutMs,
     maxConcurrent,
@@ -140,7 +220,36 @@ async function loadRuntimeSnapshot(): Promise<RuntimeSnapshot> {
     urlProbeEvents24h,
     askFailureEvents24h,
     logFiles,
+    landScoutLastStatus,
+    landScoutLastFinishedAt,
+    landScoutLastReceived,
+    landScoutLastAdded,
+    landScoutLastShortlisted,
+    landScoutFailures24h,
+    landScoutAdded24h,
+    trackedListings,
+    trackedShortlist,
   };
+}
+
+async function readFirstExistingLines(pathsToTry: string[]): Promise<string[]> {
+  for (const filePath of pathsToTry) {
+    const lines = await readTailLines(filePath, 120_000, 800);
+    if (lines.length > 0) return lines;
+  }
+  return [];
+}
+
+async function readFirstExistingJsonCount(pathsToTry: string[]): Promise<number> {
+  for (const filePath of pathsToTry) {
+    try {
+      const raw = JSON.parse(await fs.readFile(filePath, "utf8")) as unknown;
+      if (Array.isArray(raw)) return raw.length;
+    } catch {
+      continue;
+    }
+  }
+  return 0;
 }
 
 export default async function PortfoliosPage() {
@@ -155,6 +264,9 @@ export default async function PortfoliosPage() {
   } catch {
     parcels = [];
   }
+
+  const verifiedParcels = parcels.filter((parcel) => !isLaneLead(parcel));
+  const scoutLanes = parcels.filter(isLaneLead);
 
   return (
     <section>
@@ -182,6 +294,28 @@ export default async function PortfoliosPage() {
           Runtime Mirror
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Land scout last run</div>
+            <strong>
+              {runtime.landScoutLastStatus === "never"
+                ? "No runs yet"
+                : runtime.landScoutLastStatus === "ok"
+                  ? "OK"
+                  : "Failed"}
+            </strong>
+          </div>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Land scout additions (24h)</div>
+            <strong>{runtime.landScoutAdded24h}</strong>
+          </div>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Land scout failures (24h)</div>
+            <strong>{runtime.landScoutFailures24h}</strong>
+          </div>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Tracked shortlist / listings</div>
+            <strong>{runtime.trackedShortlist} / {runtime.trackedListings}</strong>
+          </div>
           <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
             <div style={{ color: "#94a3b8", fontSize: 12 }}>Ask timeout</div>
             <strong>{Math.round(runtime.timeoutMs / 1000)}s</strong>
@@ -218,17 +352,22 @@ export default async function PortfoliosPage() {
         <p style={{ margin: "10px 0 0", color: "#94a3b8", fontSize: 12 }}>
           Sources: {runtime.logFiles.length > 0 ? runtime.logFiles.join(", ") : "no readable log files on this host"}
         </p>
+        <p style={{ margin: "6px 0 0", color: "#94a3b8", fontSize: 12 }}>
+          Land scout last finish: {runtime.landScoutLastFinishedAt ?? "never"} • received {runtime.landScoutLastReceived} • added {runtime.landScoutLastAdded} • shortlisted {runtime.landScoutLastShortlisted}
+        </p>
       </section>
+      <h2 style={{ margin: "0 0 10px" }}>Verified Parcels</h2>
+      <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>
+        Parcel-level listings with confirmed size and price. These are the cards suitable for side-by-side comparison.
+      </p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
-        {parcels.map((parcel) => (
+        {verifiedParcels.map((parcel) => (
           <article key={parcel.id} style={{ background: "#14211b", border: "1px solid #334155", borderRadius: 12, overflow: "hidden" }}>
-            {parcel.teaserImage ? <img src={parcel.teaserImage} alt={parcel.title} style={{ width: "100%", height: 160, objectFit: "cover" }} /> : null}
+            <img src={getParcelDisplayImage(parcel)} alt={parcel.title} style={{ width: "100%", height: 160, objectFit: "cover" }} loading="lazy" />
             <div style={{ padding: 12 }}>
               <h3 style={{ margin: "0 0 6px" }}>{parcel.title}</h3>
               <p style={{ margin: 0 }}>{parcel.location}</p>
-              <p style={{ margin: "6px 0 0" }}>
-                {parcel.sizeAcres ?? "?"} acres • ${parcel.priceUsd?.toLocaleString() ?? "?"}
-              </p>
+              <p style={{ margin: "6px 0 0" }}>{formatParcelFacts(parcel)}</p>
               <p style={{ margin: "6px 0 10px" }}>Score: {parcel.score ?? "?"}</p>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <Link href={`/portfolios/${parcel.id}`} style={{ color: "#fbbf24" }}>Open details →</Link>
@@ -238,7 +377,30 @@ export default async function PortfoliosPage() {
           </article>
         ))}
       </div>
-      {parcels.length === 0 ? <p>No parcels yet. Seed the DB and reload.</p> : null}
+      {verifiedParcels.length === 0 ? <p>No parcel-level listings synced yet.</p> : null}
+
+      <h2 style={{ margin: "22px 0 10px" }}>Scout Lanes</h2>
+      <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>
+        Lane-level market intelligence from the EU scout. These are source channels, not parcel-complete records, so exact size and price stay pending until a parcel pass is done.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+        {scoutLanes.map((parcel) => (
+          <article key={parcel.id} style={{ background: "#111827", border: "1px solid #334155", borderRadius: 12, padding: 12 }}>
+            <div style={{ display: "inline-flex", marginBottom: 8, padding: "4px 8px", borderRadius: 999, background: "#173425", color: "#86efac", fontSize: 12, fontWeight: 700 }}>
+              Lane lead
+            </div>
+            <h3 style={{ margin: "0 0 6px" }}>{parcel.title}</h3>
+            <p style={{ margin: 0 }}>{parcel.location}</p>
+            <p style={{ margin: "6px 0 0", color: "#94a3b8" }}>Exact parcel metrics pending manual/browser extraction.</p>
+            <p style={{ margin: "6px 0 10px" }}>Score: {parcel.score ?? "?"}</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Link href={`/portfolios/${parcel.id}`} style={{ color: "#fbbf24" }}>Open details →</Link>
+              {parcel.sourceUrl ? <a href={parcel.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#34d399" }}>Source ↗</a> : null}
+            </div>
+          </article>
+        ))}
+      </div>
+      {scoutLanes.length === 0 ? <p style={{ color: "#94a3b8" }}>No lane-level leads in Prisma right now.</p> : null}
     </section>
   );
 }

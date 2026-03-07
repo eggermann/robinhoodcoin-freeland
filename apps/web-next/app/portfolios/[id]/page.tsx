@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "../../../lib/db";
 import { CommentBox } from "../CommentBox";
+import { formatParcelFacts, getParcelDisplayImage, isLaneLead } from "../../../lib/parcels";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function ParcelDetailPage({ params }: { params: Promise<{ i
   });
 
   if (!parcel) return notFound();
+  const laneLead = isLaneLead(parcel);
 
   const shareText = encodeURIComponent(`Check this Freeland parcel: ${parcel.title}`);
   const shareUrl = encodeURIComponent(`${siteUrl.replace(/\/$/, "")}/portfolios/${parcel.id}`);
@@ -22,9 +24,14 @@ export default async function ParcelDetailPage({ params }: { params: Promise<{ i
     <section>
       <Link href="/portfolios" style={{ color: "#34d399" }}>← Back to portfolio</Link>
       <h1>{parcel.title}</h1>
-      {parcel.teaserImage ? <img src={parcel.teaserImage} alt={parcel.title} style={{ width: "100%", maxHeight: 360, objectFit: "cover", borderRadius: 12, border: "1px solid #334155" }} /> : null}
+      <img src={getParcelDisplayImage(parcel)} alt={parcel.title} style={{ width: "100%", maxHeight: 360, objectFit: "cover", borderRadius: 12, border: "1px solid #334155" }} />
       <p>{parcel.location}</p>
-      <p>{parcel.sizeAcres ?? "?"} acres • ${parcel.priceUsd?.toLocaleString() ?? "?"} • Score {parcel.score ?? "?"}</p>
+      <p>{formatParcelFacts(parcel)} • Score {parcel.score ?? "?"}</p>
+      {laneLead ? (
+        <p style={{ color: "#94a3b8" }}>
+          This is a lane-level scout lead, not a parcel-complete record yet. Exact lot size and price need a parcel-pass extraction step before this should be treated as a real acquisition candidate.
+        </p>
+      ) : null}
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "12px 0 20px" }}>
         {parcel.sourceUrl ? <a href={parcel.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#60a5fa" }}>Original listing ↗</a> : null}

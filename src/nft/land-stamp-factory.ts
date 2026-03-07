@@ -2,6 +2,7 @@ import { createCampaign, type StampCampaign } from "./stamp-tiers.js";
 import { getPortfolio, type FreelandParcel } from "../soul/reporting.js";
 import { getLandSearchManager, type LandListing } from "../soul/land-search.js";
 import semanticStream from "semantic-stream";
+import { buildSemanticStampArtworkPrompt } from "./semantic-stamp-style.js";
 
 type LandSource = "portfolio" | "shortlist";
 
@@ -40,6 +41,29 @@ export interface LandStampBatchResult {
   semanticPhrases: string[];
   valueSOL: number;
   prompt: string;
+}
+
+export interface LandStampPreview {
+  selectedLand: SelectableLand;
+  wikiTopic: DailyWikiTopic;
+  semanticPhrases: string[];
+  valueSOL: number;
+  goalSOL: number;
+  maxSupply: number;
+  prompt: string;
+}
+
+export interface ManualStampConceptInput {
+  landName: string;
+  landId?: string;
+  location: string;
+  sizeAcres?: number;
+  landPriceSOL?: number;
+  features?: string[];
+  language?: string;
+  maxSupply?: number;
+  goalSOL?: number;
+  requestedValueSOL?: number;
 }
 
 const MIN_STAMP_VALUE_SOL = 0.5;
@@ -266,38 +290,9 @@ async function getSemanticMotifPhrases(
   return phrases;
 }
 
-function buildLandStampPrompt(input: {
-  land: SelectableLand;
-  wikiTopic: DailyWikiTopic;
-  semanticPhrases: string[];
-  valueSOL: number;
-  goalSOL: number;
-  maxSupply: number;
-}): string {
-  const { land, wikiTopic, semanticPhrases, valueSOL, goalSOL, maxSupply } = input;
-  const motifs = semanticPhrases.slice(0, 8).join("; ");
-  const features = land.features.slice(0, 8).join(", ") || "community use";
-
-  return [
-    `Create a collectible Freeland NFT stamp for selected land "${land.name}".`,
-    `Land location: ${land.location}. Size: ${land.sizeAcres} acres. Features: ${features}.`,
-    `Land target price: ${land.landPriceSOL} SOL.`,
-    `Batch size: ${maxSupply} stamps.`,
-    `Stamp value constraint: ${valueSOL} SOL (must stay between 0.5 and 1.5 SOL).`,
-    `Crowdfunding target: ${goalSOL} SOL (includes acquisition + legal/closing buffer).`,
-    `Daily topic source (Wikipedia ${wikiTopic.date}): ${wikiTopic.title}.`,
-    `Topic summary: ${wikiTopic.extract || "n/a"}`,
-    `Motif source: semantic-stream from "${wikiTopic.title}".`,
-    `Motif phrases: ${motifs}.`,
-    "Visual language: Robin Hood folklore + modern decentralized commons.",
-    "Required symbols: bow-and-seed emblem, land contour lines, non-commercial freeland seal.",
-    "Include subtle text: FREELAND, COMMONS, and the land ID.",
-  ].join("\n");
-}
-
-export async function createLandStampBatch(
+export async function previewLandStampBatch(
   input: LandStampBatchInput,
-): Promise<LandStampBatchResult> {
+): Promise<LandStampPreview> {
   const selectedLand = resolveSelectedLand(input.selectedLandId);
   const language = (input.language ?? "en").trim() || "en";
 
@@ -330,36 +325,132 @@ export async function createLandStampBatch(
     2,
   );
 
-  const prompt = buildLandStampPrompt({
-    land: selectedLand,
+  const prompt = buildSemanticStampArtworkPrompt({
+    landName: selectedLand.name,
+    landId: selectedLand.id,
+    location: selectedLand.location,
+    sizeAcres: selectedLand.sizeAcres,
+    features: selectedLand.features,
+    landPriceSOL: selectedLand.landPriceSOL,
+    maxSupply,
+    valueSOL,
+    goalSOL,
+    wikiTitle: wikiTopic.title,
+    wikiExtract: wikiTopic.extract,
+    wikiDate: wikiTopic.date,
+    semanticPhrases,
+  });
+
+  return {
+    selectedLand,
     wikiTopic,
     semanticPhrases,
     valueSOL,
     goalSOL,
     maxSupply,
+    prompt,
+  };
+}
+
+export async function previewManualSemanticStampConcept(
+  input: ManualStampConceptInput,
+): Promise<LandStampPreview> {
+  const selectedLand: SelectableLand = {
+    id: input.landId?.trim() || `MANUAL-${Date.now().toString(36).toUpperCase()}`,
+    source: "portfolio",
+    name: input.landName.trim(),
+    location: input.location.trim(),
+    sizeAcres: input.sizeAcres ?? 1,
+    landPriceSOL: roundTo(input.landPriceSOL ?? 120, 2),
+    estimatedValueSOL: roundTo(
+      clamp(input.requestedValueSOL ?? 0.9, MIN_STAMP_VALUE_SOL, MAX_STAMP_VALUE_SOL),
+      2,
+    ),
+    features: (input.features ?? []).filter((feature) => feature.trim().length > 0),
+  };
+
+  return previewLandStampBatch({
+    selectedLandId: selectedLand.id,
+    language: input.language,
+    maxSupply: input.maxSupply,
+    goalSOL: input.goalSOL,
+    requestedValueSOL: input.requestedValueSOL,
+    activateImmediately: false,
+    legalBufferPct: DEFAULT_LEGAL_BUFFER_PCT,
+  }).catch(async () => {
+    const language = (input.language ?? "en").trim() || "en";
+    const wikiTopic = await fetchDailyWikiTopic(language);
+    const semanticPhrases = await getSemanticMotifPhrases(
+      wikiTopic.title,
+      language,
+      DEFAULT_PHRASE_COUNT,
+    );
+    const valueSOL = roundTo(
+      clamp(
+        input.requestedValueSOL ?? selectedLand.estimatedValueSOL,
+        MIN_STAMP_VALUE_SOL,
+        MAX_STAMP_VALUE_SOL,
+      ),
+      2,
+    );
+    const maxSupply = Math.max(1, Math.floor(input.maxSupply ?? DEFAULT_MAX_SUPPLY));
+    const goalSOL = roundTo(
+      input.goalSOL ?? Math.max(selectedLand.landPriceSOL * (1 + DEFAULT_LEGAL_BUFFER_PCT), maxSupply * valueSOL),
+      2,
+    );
+
+    return {
+      selectedLand,
+      wikiTopic,
+      semanticPhrases,
+      valueSOL,
+      goalSOL,
+      maxSupply,
+      prompt: buildSemanticStampArtworkPrompt({
+        landName: selectedLand.name,
+        landId: selectedLand.id,
+        location: selectedLand.location,
+        sizeAcres: selectedLand.sizeAcres,
+        features: selectedLand.features,
+        landPriceSOL: selectedLand.landPriceSOL,
+        maxSupply,
+        valueSOL,
+        goalSOL,
+        wikiTitle: wikiTopic.title,
+        wikiExtract: wikiTopic.extract,
+        wikiDate: wikiTopic.date,
+        semanticPhrases,
+      }),
+    };
   });
+}
+
+export async function createLandStampBatch(
+  input: LandStampBatchInput,
+): Promise<LandStampBatchResult> {
+  const preview = await previewLandStampBatch(input);
 
   const campaign = createCampaign({
-    name: `${selectedLand.name} Semantic Stamp Drop`,
+    name: `${preview.selectedLand.name} Semantic Stamp Drop`,
     description:
-      `Parcel stamp batch for ${selectedLand.name} based on the Wikipedia daily topic ` +
-      `"${wikiTopic.title}" with semantic motif phrases.`,
-    parcelId: selectedLand.id,
+      `Parcel stamp batch for ${preview.selectedLand.name} based on the Wikipedia daily topic ` +
+      `"${preview.wikiTopic.title}" with semantic motif phrases.`,
+    parcelId: preview.selectedLand.id,
     tier: "parcel",
-    priceSOL: valueSOL,
-    maxSupply,
-    goalSOL,
-    artworkPrompt: prompt,
+    priceSOL: preview.valueSOL,
+    maxSupply: preview.maxSupply,
+    goalSOL: preview.goalSOL,
+    artworkPrompt: preview.prompt,
     active: input.activateImmediately ?? true,
     closesAt: new Date(Date.now() + 21 * 24 * 3600_000).toISOString(),
   });
 
   return {
     campaign,
-    selectedLand,
-    wikiTopic,
-    semanticPhrases,
-    valueSOL,
-    prompt,
+    selectedLand: preview.selectedLand,
+    wikiTopic: preview.wikiTopic,
+    semanticPhrases: preview.semanticPhrases,
+    valueSOL: preview.valueSOL,
+    prompt: preview.prompt,
   };
 }

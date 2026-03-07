@@ -17,6 +17,7 @@
     "deploy:token": "tsx src/token/deploy.ts",
     "transfer:mint-authority": "tsx src/token/transfer-mint-authority.ts",
     "deploy:nft": "tsx src/nft/deploy.ts",
+    "preview:stamp": "tsx src/nft/preview-semantic-stamp.ts",
     "deploy:uberspace": "bash ./deploy_uberspace",
     "deploy_uberspace": "bash ./deploy_uberspace",
     "sync:web-data": "tsx src/site/sync-dashboard.ts",

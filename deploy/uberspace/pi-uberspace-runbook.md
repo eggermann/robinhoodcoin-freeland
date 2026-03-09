@@ -40,7 +40,7 @@ node -v
 Run interactive model setup:
 
 ```bash
-npx --yes openclaw@2026.2.22-2 configure --section model
+npx --yes openclaw@2026.3.8 configure --section model
 ```
 
 Choose:
@@ -56,35 +56,28 @@ If prompted with `Paste the redirect URL`:
 ### 2.3 Force loopback bind (required for secure tunnel mode)
 
 ```bash
-npx --yes openclaw@2026.2.22-2 config set gateway.bind loopback
+npx --yes openclaw@2026.3.8 config set gateway.bind loopback
 ```
 
 ### 2.4 Gateway service
 
-If not already installed, create:
-`~/.config/systemd/user/openclaw-gateway.service`
-
-```ini
-[Unit]
-Description=OpenClaw Gateway
-After=network-online.target
-
-[Service]
-Type=simple
-ExecStart=/bin/bash -lc 'npx --yes openclaw@2026.2.22-2 gateway --port 18789'
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=default.target
-```
-
-Enable/start:
+Install or refresh the systemd unit via the CLI so the service file is regenerated for
+the target OpenClaw build:
 
 ```bash
-systemctl --user daemon-reload
-systemctl --user enable --now openclaw-gateway
-systemctl --user status openclaw-gateway
+TOKEN="$(python3 - <<'PY'
+import json, os
+print(json.load(open(os.path.expanduser('~/.openclaw/openclaw.json')))['gateway']['auth']['token'])
+PY
+)"
+
+npx --yes openclaw@2026.3.8 gateway install --force --port 18789 --token "${TOKEN}"
+```
+
+Verify:
+
+```bash
+systemctl --user status openclaw-gateway --no-pager
 ```
 
 Optional (keep user services running without active SSH session):
@@ -227,6 +220,25 @@ Optional:
 START_AUTONOMY=true bash deploy/uberspace/deploy.sh
 ```
 
+On the Pi, refresh the gateway binary and regenerate the service unit whenever a new
+OpenClaw release is available:
+
+```bash
+export NVM_DIR="$HOME/.nvm"
+. "$NVM_DIR/nvm.sh"
+
+TOKEN="$(python3 - <<'PY'
+import json, os
+print(json.load(open(os.path.expanduser('~/.openclaw/openclaw.json')))['gateway']['auth']['token'])
+PY
+)"
+
+npx --yes openclaw@2026.3.8 gateway install --force --port 18789 --token "${TOKEN}"
+systemctl --user restart openclaw-gateway
+npx --yes openclaw@2026.3.8 gateway health
+npx --yes openclaw@2026.3.8 update status --json
+```
+
 ## 6) Healthcheck Commands
 
 ### Pi
@@ -293,7 +305,7 @@ Cause:
 Fix:
 
 ```bash
-npx --yes openclaw@2026.2.22-2 config set gateway.bind loopback
+npx --yes openclaw@2026.3.8 config set gateway.bind loopback
 systemctl --user restart openclaw-gateway
 ```
 

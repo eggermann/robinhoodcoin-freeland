@@ -16,7 +16,7 @@ Usage:
 Options:
   --source <path>   Source env file (default: <repo>/.env)
   --target <path>   Target env file (default: ~/.openclaw/.env)
-  --keys <csv>      Keys to sync (default: NVIDIA_API_KEY,OPENAI_API_KEY)
+  --keys <csv>      Keys to sync (default: NVIDIA_API_KEY,OPENAI_API_KEY,BRAVE_API_KEY)
   -h, --help        Show this help
 
 Exit codes:
@@ -27,7 +27,7 @@ EOF
 
 SOURCE_ENV=""
 TARGET_ENV="${HOME}/.openclaw/.env"
-KEYS_CSV="NVIDIA_API_KEY,OPENAI_API_KEY"
+KEYS_CSV="NVIDIA_API_KEY,OPENAI_API_KEY,BRAVE_API_KEY"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -188,4 +188,3 @@ fi
 if [[ "${updated_any}" == "false" ]]; then
   echo "No keys were updated."
 fi
-

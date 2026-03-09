@@ -19,6 +19,8 @@ fi
 export PATH="${HOME}/.local/bin:${PATH}"
 
 cd "${ROOT_DIR}"
+WEB_NEXT_DIR="${ROOT_DIR}/apps/web-next"
+WEB_NEXT_DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:./prisma/dev.db}}"
 
 if ! command -v npm >/dev/null 2>&1; then
   echo "npm not found. Install/select Node.js first (for Uberspace: uberspace tools version use node 22)." >&2
@@ -33,6 +35,20 @@ npm run build
 
 echo "Building website..."
 npm run build:web
+
+if [[ -f "${WEB_NEXT_DIR}/package.json" ]]; then
+  echo "Installing Next app dependencies..."
+  (
+    cd "${WEB_NEXT_DIR}"
+    npm ci
+  )
+
+  echo "Building Next app..."
+  (
+    cd "${WEB_NEXT_DIR}"
+    DATABASE_URL="${WEB_NEXT_DATABASE_URL}" npm run build
+  )
+fi
 
 echo "Publishing website to ${WEB_ROOT}..."
 mkdir -p "${WEB_ROOT}"
@@ -50,6 +66,7 @@ if command -v supervisorctl >/dev/null 2>&1; then
   supervisorctl reread
   supervisorctl update
   supervisorctl restart robinhoodcoin-bot || supervisorctl start robinhoodcoin-bot
+  supervisorctl restart robinhoodcoin-web-next || supervisorctl start robinhoodcoin-web-next
 
   if [[ "${START_AUTONOMY:-false}" == "true" ]]; then
     supervisorctl restart robinhoodcoin-autonomy || supervisorctl start robinhoodcoin-autonomy

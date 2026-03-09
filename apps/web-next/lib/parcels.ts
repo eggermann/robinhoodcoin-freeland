@@ -9,6 +9,43 @@ type ParcelLike = {
   score?: number | null;
 };
 
+const COUNTRY_LABELS: Record<string, string> = {
+  AT: "Austria",
+  BE: "Belgium",
+  BG: "Bulgaria",
+  CH: "Switzerland",
+  CY: "Cyprus",
+  CZ: "Czechia",
+  DE: "Germany",
+  DK: "Denmark",
+  EE: "Estonia",
+  ES: "Spain",
+  FI: "Finland",
+  FR: "France",
+  GB: "United Kingdom",
+  GR: "Greece",
+  HR: "Croatia",
+  HU: "Hungary",
+  IE: "Ireland",
+  IS: "Iceland",
+  IT: "Italy",
+  LI: "Liechtenstein",
+  LT: "Lithuania",
+  LU: "Luxembourg",
+  LV: "Latvia",
+  MT: "Malta",
+  NL: "Netherlands",
+  NO: "Norway",
+  PL: "Poland",
+  PT: "Portugal",
+  RO: "Romania",
+  SE: "Sweden",
+  SI: "Slovenia",
+  SK: "Slovakia",
+};
+
+const EUROPEAN_COUNTRIES = new Set(Object.keys(COUNTRY_LABELS));
+
 export function isLaneLead(parcel: ParcelLike): boolean {
   return parcel.status === "lane" || parcel.sizeAcres == null || parcel.priceUsd == null;
 }
@@ -21,6 +58,16 @@ export function formatParcelFacts(parcel: ParcelLike): string {
   const size = parcel.sizeAcres != null ? `${formatNumber(parcel.sizeAcres)} acres` : "Size pending";
   const price = parcel.priceUsd != null ? `$${parcel.priceUsd.toLocaleString()}` : "Price pending";
   return `${size} • ${price}`;
+}
+
+export function countryLabel(country: string | null | undefined): string {
+  const code = (country ?? "").trim().toUpperCase();
+  return COUNTRY_LABELS[code] ?? (code || "Global");
+}
+
+export function isEuropeanCountry(country: string | null | undefined): boolean {
+  const code = (country ?? "").trim().toUpperCase();
+  return EUROPEAN_COUNTRIES.has(code);
 }
 
 export function getParcelDisplayImage(parcel: ParcelLike): string {

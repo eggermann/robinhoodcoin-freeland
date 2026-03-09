@@ -70,6 +70,8 @@ if ! command -v npm >/dev/null 2>&1; then
 fi
 
 cd "${ROOT_DIR}"
+WEB_NEXT_DIR="${ROOT_DIR}/apps/web-next"
+WEB_NEXT_DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:./prisma/dev.db}}"
 
 if [[ "${SKIP_LOCAL_BUILD}" != "true" ]]; then
   echo "Installing local dependencies..."
@@ -80,15 +82,35 @@ if [[ "${SKIP_LOCAL_BUILD}" != "true" ]]; then
 
   echo "Building website locally..."
   npm run build:web
+
+  if [[ -f "${WEB_NEXT_DIR}/package.json" ]]; then
+    echo "Installing Next app dependencies locally..."
+    (
+      cd "${WEB_NEXT_DIR}"
+      npm ci
+    )
+
+    echo "Building Next app locally..."
+    (
+      cd "${WEB_NEXT_DIR}"
+      DATABASE_URL="${WEB_NEXT_DATABASE_URL}" npm run build
+    )
+  fi
 fi
 
 echo "Preparing remote directories..."
-"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${REMOTE_DIR}' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/site/public/data' '${WEB_ROOT}' '/home/${UBERSPACE_USER}/logs/robinhoodcoin'"
+"${SSH_CMD[@]}" "${REMOTE}" "mkdir -p '${REMOTE_DIR}' '${REMOTE_DIR}/scripts' '${REMOTE_DIR}/site/public/data' '${REMOTE_DIR}/apps/web-next' '${WEB_ROOT}' '/home/${UBERSPACE_USER}/logs/robinhoodcoin'"
 
 echo "Syncing runtime artifacts to ${REMOTE}:${REMOTE_DIR}..."
 rsync -az --delete -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/dist/" "${REMOTE}:${REMOTE_DIR}/dist/"
 rsync -az -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/package.json" "${ROOT_DIR}/package-lock.json" "${REMOTE}:${REMOTE_DIR}/"
 rsync -az --delete -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/scripts/uberspace/" "${REMOTE}:${REMOTE_DIR}/scripts/uberspace/"
+rsync -az --delete \
+  --exclude 'node_modules' \
+  --exclude '.env.local' \
+  --exclude '.next/cache' \
+  -e "${RSYNC_SSH_CMD}" \
+  "${ROOT_DIR}/apps/web-next/" "${REMOTE}:${REMOTE_DIR}/apps/web-next/"
 
 echo "Publishing static website to ${REMOTE}:${WEB_ROOT}..."
 rsync -az --delete -e "${RSYNC_SSH_CMD}" "${ROOT_DIR}/site/dist/" "${REMOTE}:${WEB_ROOT}/"
@@ -103,6 +125,12 @@ cd "${REMOTE_DIR}"
 
 npm install --omit=dev --no-audit --no-fund --no-progress
 
+if [[ -f "${REMOTE_DIR}/apps/web-next/package.json" ]]; then
+  cd "${REMOTE_DIR}/apps/web-next"
+  npm install --omit=dev --no-audit --no-fund --no-progress
+  cd "${REMOTE_DIR}"
+fi
+
 bash scripts/uberspace/install-services.sh
 
 mkdir -p "${REMOTE_DIR}/site/public/data"
@@ -113,6 +141,7 @@ if command -v supervisorctl >/dev/null 2>&1; then
   supervisorctl reread
   supervisorctl update
   supervisorctl restart robinhoodcoin-bot || supervisorctl start robinhoodcoin-bot
+  supervisorctl restart robinhoodcoin-web-next || supervisorctl start robinhoodcoin-web-next
   if [[ "${START_AUTONOMY}" == "true" ]]; then
     supervisorctl restart robinhoodcoin-autonomy || supervisorctl start robinhoodcoin-autonomy
   fi

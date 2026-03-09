@@ -158,6 +158,11 @@ def human_message(text: str, subsystem: str) -> str:
                 pass
     pairs = extract_pairs(text)
     mapping = [
+        ("web fetch failed (403)", "Site blocked by remote server"),
+        ("web_fetch failed", "Site fetch failed"),
+        ("verification required", "Site verification required"),
+        ("access denied", "Site denied access"),
+        ("just a moment", "Site challenge page"),
         ("embedded run timeout", "AI request timed out"),
         ("request timed out before a response was generated", "Request timed out"),
         ("request was aborted", "Request was aborted"),
@@ -181,6 +186,27 @@ def human_message(text: str, subsystem: str) -> str:
         if key in low:
             return f"{label} | {' | '.join(pairs)}" if pairs else label
     return " | ".join(pairs) if pairs else text
+
+
+def compact_message(text: str) -> str:
+    text = normalize(text)
+    if not text:
+        return text
+
+    if text.startswith("Candidates: "):
+        items = [part.strip() for part in text[len("Candidates: "):].split(";") if part.strip()]
+        if len(items) > 2:
+            return "Candidates: " + "; ".join(items[:2]) + f" | +{len(items) - 2} more"
+
+    clauses = [part.strip() for part in text.split("|") if part.strip()]
+    if len(clauses) > 3:
+        return " | ".join(clauses[:3])
+
+    sentence_split = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)
+    if sentence_split and len(sentence_split[0]) >= 20:
+        return sentence_split[0]
+
+    return text
 
 
 def icon_for(level: str, subsystem: str, is_land: bool) -> str:
@@ -269,12 +295,35 @@ class Dashboard:
         open(ERR_LOG, "a", encoding="utf-8").close()
 
         self.root = tk.Tk()
+        self.root.tk.call("tk", "scaling", 1.0)
+        self.screen_w = self.root.winfo_screenwidth()
+        self.screen_h = self.root.winfo_screenheight()
+        self.compact_screen = self.screen_w <= 320 or self.screen_h <= 240
+        self.safe_bottom = 8 if self.compact_screen else 3
         self.root.title("Freeland Rocks Live")
         self.root.configure(bg="#050505")
+        self.root.geometry(f"{self.screen_w}x{self.screen_h}+0+0")
         self.root.attributes("-fullscreen", True)
         self.root.attributes("-topmost", True)
         self.root.overrideredirect(True)
         self.root.bind("<Escape>", lambda _e: None)
+
+        if self.compact_screen:
+            self.header_font = ("Monospace", -14, "bold")
+            self.meta_font = ("Monospace", -9, "bold")
+            self.body_font = ("Monospace", -11, "bold")
+            self.footer_font = ("Monospace", -9, "bold")
+            self.header_padx = 4
+            self.body_padx = 6
+            self.scrollbar_width = 12
+        else:
+            self.header_font = ("Monospace", -18, "bold")
+            self.meta_font = ("Monospace", -11, "bold")
+            self.body_font = ("Monospace", -12, "bold")
+            self.footer_font = ("Monospace", -11, "bold")
+            self.header_padx = 8
+            self.body_padx = 8
+            self.scrollbar_width = 14
 
         self.lines = deque(maxlen=MAX_LINES)
         self.last_key = None
@@ -287,11 +336,11 @@ class Dashboard:
         self.header = tk.Label(
             self.root,
             text="FREELAND ROCKS LIVE",
-            font=("Monospace", 11, "bold"),
+            font=self.header_font,
             fg="#7cf08a",
             bg="#050505",
             anchor="w",
-            padx=8,
+            padx=self.header_padx,
             pady=2,
         )
         self.header.pack(fill="x")
@@ -299,11 +348,11 @@ class Dashboard:
         self.healthbar = tk.Label(
             self.root,
             text="Gateway checking",
-            font=("Monospace", 7, "bold"),
+            font=self.meta_font,
             fg="#f2f2f2",
             bg="#050505",
             anchor="w",
-            padx=8,
+            padx=self.header_padx,
             pady=0,
         )
         self.healthbar.pack(fill="x")
@@ -317,21 +366,22 @@ class Dashboard:
             troughcolor="#111111",
             bg="#2d2d2d",
             activebackground="#5a5a5a",
-            width=10,
+            width=self.scrollbar_width,
         )
         self.scrollbar.pack(side="right", fill="y")
 
         self.body = tk.Text(
             self.body_frame,
-            font=("Monospace", 7, "bold"),
+            font=self.body_font,
             fg="#f3f3f3",
             bg="#050505",
             wrap="word",
             borderwidth=0,
             highlightthickness=0,
-            padx=8,
-            pady=2,
+            padx=self.body_padx,
+            pady=0,
             spacing1=0,
+            spacing2=0,
             spacing3=0,
             yscrollcommand=self.scrollbar.set,
         )
@@ -343,17 +393,25 @@ class Dashboard:
         self.body.tag_configure("land", foreground="#7cf08a")
         self.body.tag_configure("meta", foreground="#b0b0b0")
 
-        self.footer = tk.Label(
+        self.footer_frame = tk.Frame(
             self.root,
+            bg="#050505",
+            height=abs(self.footer_font[1]) + self.safe_bottom + 6,
+        )
+        self.footer_frame.pack(fill="x", side="bottom")
+        self.footer_frame.pack_propagate(False)
+
+        self.footer = tk.Label(
+            self.footer_frame,
             text="",
-            font=("Monospace", 7),
+            font=self.footer_font,
             fg="#55d6ff",
             bg="#050505",
             anchor="w",
-            padx=8,
-            pady=2,
+            padx=self.header_padx,
+            pady=1,
         )
-        self.footer.pack(fill="x")
+        self.footer.pack(fill="x", side="top", pady=(0, self.safe_bottom))
 
         self.seed_recent_entries()
         self.render()
@@ -419,6 +477,8 @@ class Dashboard:
             tag = "land" if item["is_land"] else item["level"]
             icon = icon_for(item["level"], item["subsystem"], item["is_land"])
             message = human_message(item["msg"], item["subsystem"])
+            if self.compact_screen:
+                message = compact_message(message)
             if item["repeat"] > 1:
                 message += f" x{item['repeat']}"
             line = f"{item['ts']} {icon:<5} {message}"

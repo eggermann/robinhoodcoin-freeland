@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { db } from "../../lib/db";
-import { formatParcelFacts, getParcelDisplayImage, isLaneLead } from "../../lib/parcels";
+import { countryLabel, formatParcelFacts, getParcelDisplayImage, isEuropeanCountry, isLaneLead } from "../../lib/parcels";
 
 export const dynamic = "force-dynamic";
 
@@ -267,6 +267,9 @@ export default async function PortfoliosPage() {
 
   const verifiedParcels = parcels.filter((parcel) => !isLaneLead(parcel));
   const scoutLanes = parcels.filter(isLaneLead);
+  const germanParcels = parcels.filter((parcel) => (parcel.country ?? "").toUpperCase() === "DE");
+  const europeanParcels = parcels.filter((parcel) => isEuropeanCountry(parcel.country));
+  const outsideEuropeParcels = parcels.filter((parcel) => !isEuropeanCountry(parcel.country));
 
   return (
     <section>
@@ -356,6 +359,45 @@ export default async function PortfoliosPage() {
           Land scout last finish: {runtime.landScoutLastFinishedAt ?? "never"} • received {runtime.landScoutLastReceived} • added {runtime.landScoutLastAdded} • shortlisted {runtime.landScoutLastShortlisted}
         </p>
       </section>
+      <section
+        style={{
+          margin: "0 0 20px",
+          padding: 14,
+          borderRadius: 12,
+          border: "1px solid #334155",
+          background: "linear-gradient(180deg, #101725, #0b1220)",
+        }}
+      >
+        <p style={{ margin: "0 0 8px", color: "#34d399", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: 11 }}>
+          Regional Boards
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 14 }}>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Germany</div>
+            <strong>{germanParcels.length}</strong>
+          </div>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Europe</div>
+            <strong>{europeanParcels.length}</strong>
+          </div>
+          <div style={{ background: "#0b1220", border: "1px solid #1f2937", borderRadius: 10, padding: 10 }}>
+            <div style={{ color: "#94a3b8", fontSize: 12 }}>Outside Europe</div>
+            <strong>{outsideEuropeParcels.length}</strong>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 18 }}>
+          <RegionSection
+            title="Germany"
+            body="Dedicated German parcel and lane watch. Use this board when you want Germany visible as its own stream."
+            parcels={germanParcels}
+          />
+          <RegionSection
+            title="Europe"
+            body="European parcel and lane stream, including Germany, Portugal, Spain, Switzerland, and future EU-adjacent additions."
+            parcels={europeanParcels}
+          />
+        </div>
+      </section>
       <h2 style={{ margin: "0 0 10px" }}>Verified Parcels</h2>
       <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>
         Parcel-level listings with confirmed size and price. These are the cards suitable for side-by-side comparison.
@@ -401,6 +443,65 @@ export default async function PortfoliosPage() {
         ))}
       </div>
       {scoutLanes.length === 0 ? <p style={{ color: "#94a3b8" }}>No lane-level leads in Prisma right now.</p> : null}
+    </section>
+  );
+}
+
+function RegionSection({
+  title,
+  body,
+  parcels,
+}: {
+  title: string;
+  body: string;
+  parcels: Array<{
+    id: string;
+    title: string;
+    location: string;
+    country: string | null;
+    sourceUrl: string | null;
+    sizeAcres: number | null;
+    priceUsd: number | null;
+    score: number | null;
+    teaserImage: string | null;
+    status: string;
+  }>;
+}) {
+  return (
+    <section>
+      <h2 style={{ margin: "0 0 6px" }}>{title}</h2>
+      <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>{body}</p>
+      {parcels.length === 0 ? (
+        <p style={{ margin: 0, color: "#94a3b8" }}>No active parcel or lane records in this board yet.</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
+          {parcels.map((parcel) => {
+            const laneLead = isLaneLead(parcel);
+            return (
+              <article key={parcel.id} style={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12, overflow: "hidden" }}>
+                <img src={getParcelDisplayImage(parcel)} alt={parcel.title} style={{ width: "100%", height: 140, objectFit: "cover" }} loading="lazy" />
+                <div style={{ padding: 12 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                    <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: laneLead ? "#173425" : "#1f2937", color: laneLead ? "#86efac" : "#fcd34d", fontSize: 12, fontWeight: 700 }}>
+                      {laneLead ? "Lane" : "Verified"}
+                    </span>
+                    <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#172033", color: "#93c5fd", fontSize: 12, fontWeight: 700 }}>
+                      {countryLabel(parcel.country)}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: "0 0 6px" }}>{parcel.title}</h3>
+                  <p style={{ margin: 0 }}>{parcel.location}</p>
+                  <p style={{ margin: "6px 0 10px", color: "#94a3b8" }}>{formatParcelFacts(parcel)} • Score {parcel.score ?? "?"}</p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <Link href={`/portfolios/${parcel.id}`} style={{ color: "#fbbf24" }}>Open details →</Link>
+                    {parcel.sourceUrl ? <a href={parcel.sourceUrl} target="_blank" rel="noreferrer" style={{ color: "#34d399" }}>Source ↗</a> : null}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

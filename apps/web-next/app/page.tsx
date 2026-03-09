@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "../lib/db";
+import { isDatabaseUnavailableError } from "../lib/db-errors";
 import { isVerifiedParcel } from "../lib/parcels";
 
 export const dynamic = "force-dynamic";
@@ -7,28 +8,48 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL ?? "https://t.me/robinhoodcoin";
   const paypalSupportUrl = process.env.NEXT_PUBLIC_PAYPAL_SUPPORT_URL ?? "";
-  const [trackedLeads, topParcel, cheapestParcel, shortlist] = await Promise.all([
-    db.parcel.count(),
-    db.parcel.findFirst({
-      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-      select: { score: true },
-    }),
-    db.parcel.findFirst({
-      where: { priceUsd: { not: null } },
-      orderBy: [{ priceUsd: "asc" }, { score: "desc" }, { createdAt: "desc" }],
-      select: { priceUsd: true },
-    }),
-    db.parcel.findMany({
-      where: {
-        priceUsd: { not: null },
-        sizeAcres: { not: null },
-        status: { not: "lane" },
-      },
-      orderBy: [{ score: "desc" }, { createdAt: "desc" }],
-      take: 3,
-      select: { id: true, title: true, location: true, score: true, status: true, sizeAcres: true, priceUsd: true },
-    }),
-  ]);
+  let trackedLeads = 0;
+  let topParcel: { score: number | null } | null = null;
+  let cheapestParcel: { priceUsd: number | null } | null = null;
+  let shortlist: Array<{
+    id: string;
+    title: string;
+    location: string;
+    score: number | null;
+    status: string;
+    sizeAcres: number | null;
+    priceUsd: number | null;
+  }> = [];
+  let parcelDataUnavailable = false;
+
+  try {
+    [trackedLeads, topParcel, cheapestParcel, shortlist] = await Promise.all([
+      db.parcel.count(),
+      db.parcel.findFirst({
+        orderBy: [{ score: "desc" }, { createdAt: "desc" }],
+        select: { score: true },
+      }),
+      db.parcel.findFirst({
+        where: { priceUsd: { not: null } },
+        orderBy: [{ priceUsd: "asc" }, { score: "desc" }, { createdAt: "desc" }],
+        select: { priceUsd: true },
+      }),
+      db.parcel.findMany({
+        where: {
+          priceUsd: { not: null },
+          sizeAcres: { not: null },
+          status: { not: "lane" },
+        },
+        orderBy: [{ score: "desc" }, { createdAt: "desc" }],
+        take: 3,
+        select: { id: true, title: true, location: true, score: true, status: true, sizeAcres: true, priceUsd: true },
+      }),
+    ]);
+  } catch (error) {
+    if (!isDatabaseUnavailableError(error)) throw error;
+    parcelDataUnavailable = true;
+    console.error("Parcel database unavailable on homepage render.", error);
+  }
 
   return (
     <main style={{ display: "grid", gap: 26 }}>
@@ -132,8 +153,22 @@ export default async function HomePage() {
         <StatCard label="Tracked Leads" value={String(trackedLeads)} color="#fcd34d" />
         <StatCard label="Top Score" value={topParcel?.score?.toString() ?? "?"} color="#4ade80" />
         <StatCard label="Lowest Known Price" value={`$${cheapestParcel?.priceUsd?.toLocaleString() ?? "?"}`} color="#60a5fa" />
-        <StatCard label="Platform" value="Live" color="#f472b6" />
+        <StatCard label="Platform" value={parcelDataUnavailable ? "Degraded" : "Live"} color="#f472b6" />
       </section>
+
+      {parcelDataUnavailable ? (
+        <section
+          style={{
+            borderRadius: 14,
+            border: "1px solid #7f1d1d",
+            background: "#1f1614",
+            padding: 18,
+            color: "#fecaca",
+          }}
+        >
+          The parcel database is temporarily unavailable. The mission site is still online, but live portfolio stats and parcel records will recover once the scout database reconnects.
+        </section>
+      ) : null}
 
       <section
         id="mission"

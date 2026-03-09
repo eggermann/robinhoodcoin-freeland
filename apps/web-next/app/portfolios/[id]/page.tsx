@@ -1,19 +1,43 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "../../../lib/db";
+import { isDatabaseUnavailableError } from "../../../lib/db-errors";
 import { CommentBox } from "../CommentBox";
 import { formatParcelFacts, getParcelDisplayImage, isLaneLead } from "../../../lib/parcels";
 
 export const dynamic = "force-dynamic";
 
+async function loadParcel(id: string) {
+  return db.parcel.findUnique({
+    where: { id },
+    include: { comments: { orderBy: { createdAt: "desc" }, take: 50 } },
+  });
+}
+
 export default async function ParcelDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://freeland.rocks";
   const discussUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL ?? "https://t.me/robinhoodcoin";
-  const parcel = await db.parcel.findUnique({
-    where: { id },
-    include: { comments: { orderBy: { createdAt: "desc" }, take: 50 } },
-  });
+  let parcel: Awaited<ReturnType<typeof loadParcel>> = null;
+
+  try {
+    parcel = await loadParcel(id);
+  } catch (error) {
+    if (!isDatabaseUnavailableError(error)) throw error;
+    console.error(`Parcel detail unavailable for ${id}.`, error);
+
+    return (
+      <section style={{ display: "grid", gap: 16 }}>
+        <Link href="/portfolios" style={{ color: "#34d399" }}>← Back to portfolio</Link>
+        <div style={{ border: "1px solid #7f1d1d", borderRadius: 12, padding: 18, background: "#1f1614" }}>
+          <h1 style={{ marginTop: 0, color: "#fecaca" }}>Parcel data temporarily unavailable</h1>
+          <p style={{ marginBottom: 0, color: "#fca5a5" }}>
+            The parcel database is offline right now, so this record cannot be loaded. Try again after the web database reconnects.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   if (!parcel) return notFound();
   const laneLead = isLaneLead(parcel);

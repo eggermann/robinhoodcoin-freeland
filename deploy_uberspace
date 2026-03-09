@@ -47,7 +47,10 @@ load_env_file() {
       value="${value:1:${#value}-2}"
     fi
 
-    [[ -n "${key}" ]] && export "${key}=${value}"
+    if [[ -n "${key}" ]]; then
+      printf -v "${key}" '%s' "${value}"
+      export "${key}"
+    fi
   done < "${env_file}"
 }
 

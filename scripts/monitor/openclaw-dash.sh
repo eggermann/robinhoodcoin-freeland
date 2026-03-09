@@ -31,6 +31,7 @@ ERR_LOG = os.environ["ERR_LOG"]
 
 # Emit a heartbeat when no new log lines arrive, so the dashboard stays alive on stage.
 IDLE_FLUSH_SEC = 5
+IDLE_FRAMES = ["-", "\\", "|", "/"]
 
 COL = {
     "info": "\033[38;5;45m",
@@ -42,6 +43,8 @@ COL = {
 }
 
 LAND_RE = re.compile(r"\b(land|parcel|acre|stamp|proposal|shortlist|governance)\b", re.I)
+status_line_active = False
+idle_frame_idx = 0
 
 def pick_message(obj):
     if isinstance(obj, dict):
@@ -53,11 +56,30 @@ def pick_message(obj):
             return obj["0"]
     return None
 
+def clear_status_line():
+    global status_line_active
+    if status_line_active:
+        print("\r\033[2K", end="")
+        status_line_active = False
+
 def emit(msg, level, subsystem, ts, delta, rate, is_land):
+    clear_status_line()
     color = COL["land"] if is_land else COL.get(level, COL["info"])
     tag = "[LAND]" if is_land else ""
     print(f"{COL['ts']}{ts}{COL['reset']} | +{delta:0.3f}s | {rate:6.2f} l/s | {color}{level.upper():4}{COL['reset']} {subsystem} {tag} {msg}")
     sys.stdout.flush()
+
+def emit_idle(ts, delta):
+    global status_line_active, idle_frame_idx
+    frame = IDLE_FRAMES[idle_frame_idx % len(IDLE_FRAMES)]
+    idle_frame_idx += 1
+    print(
+        f"\r\033[2K{COL['ts']}{ts}{COL['reset']} | +{delta:0.3f}s | "
+        f"{0:6.2f} l/s | {COL['info']}HEART{COL['reset']} {frame} idle",
+        end="",
+    )
+    sys.stdout.flush()
+    status_line_active = True
 
 tail = subprocess.Popen([
     "tail", "-n0", "-F", "-q", MAIN_LOG, ERR_LOG
@@ -107,9 +129,10 @@ try:
             emit(msg, level, subsystem, ts, delta, rate, is_land)
         else:
             delta = now - last_line_at
-            emit("(idle)", "info", "HEART", datetime.fromtimestamp(now).strftime("%H:%M:%S"), delta, 0, False)
+            emit_idle(datetime.fromtimestamp(now).strftime("%H:%M:%S"), delta)
 finally:
     try:
+        clear_status_line()
         tail.terminate()
     except Exception:
         pass

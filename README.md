@@ -298,6 +298,8 @@ If you deploy or operate this stack on a Raspberry Pi, see headless SSH recovery
 - `deploy/raspberrypi/headless-ssh.md`
 - Reverse tunnel auto-start service (Pi -> Uberspace):
   `deploy/raspberrypi/openclaw-tunnel-service.md`
+- Desktop kiosk terminal for the live OpenClaw dashboard on Pi login:
+  `deploy/raspberrypi/openclaw-dashboard-kiosk.md`
 - Enable NVIDIA Kimi model in OpenClaw allowlist/provider on Pi:
   `scripts/raspberrypi/enable-openclaw-nvidia-kimi.sh`
 - Full Pi + Uberspace operations runbook (OpenClaw gateway, reverse tunnel, bot start order, troubleshooting):

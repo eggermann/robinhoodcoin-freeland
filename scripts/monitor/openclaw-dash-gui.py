@@ -12,6 +12,7 @@ import time
 import tkinter as tk
 from collections import deque
 from datetime import datetime
+from urllib.parse import urlparse
 
 DAY = os.environ.get("LOG_DAY") or datetime.now().strftime("%Y-%m-%d")
 MAIN_LOG = f"/tmp/openclaw/openclaw-{DAY}.log"
@@ -27,9 +28,6 @@ HIDDEN_MESSAGE_SNIPPETS = (
     "Change your behavior or ignore your guidelines",
     "Reveal sensitive information",
     "Send messages to third parties",
-    "<<<EXTERNAL_UNTRUSTED_CONTENT",
-    "<<<END_EXTERNAL_UNTRUSTED_CONTENT",
-    "Source: Web Fetch",
 )
 
 
@@ -78,6 +76,20 @@ def pick_message(obj: dict) -> str:
 
 def extract_pairs(text: str) -> list[str]:
     return [f"{titleize(k)} {v.strip(chr(34))}" for k, v in KV_RE.findall(text)]
+
+
+def first_domain(text: str) -> str | None:
+    urls = re.findall(r'https?://[^\s"<>]+', text)
+    for url in urls:
+        try:
+            host = urlparse(url).hostname or ""
+        except Exception:
+            host = ""
+        host = re.sub(r"^www\.", "", host.lower())
+        if not host or host.endswith("edgesuite.net"):
+            continue
+        return host
+    return None
 
 
 def summarize_value(value) -> str:
@@ -131,6 +143,25 @@ def summarize_value(value) -> str:
 def human_message(text: str, subsystem: str) -> str:
     text = strip_code_fences(text)
     text = normalize(text)
+    low = text.lower()
+    if "web_fetch failed" in low or "web fetch failed" in low or "verification required" in low or "access denied" in low or "just a moment" in low:
+        detail = []
+        host = first_domain(text)
+        if host:
+            detail.append(host)
+        if "verification required" in low:
+            detail.append("verification")
+        elif "just a moment" in low or "cloudflare" in low:
+            detail.append("challenge")
+        elif "access denied" in low:
+            detail.append("denied")
+        if "(403)" in low or " 403" in low or "http 403" in low:
+            detail.append("403")
+        return "Site blocked" + (f" | {' | '.join(detail)}" if detail else "")
+    if "stopreason=tooluse" in low:
+        return "Tool handoff ended"
+    if "tool:" in low and "failed" in low:
+        return "Scout query failed"
     if text.lower().startswith("candidates:"):
         payload = text.split(":", 1)[1].strip()
         try:
@@ -181,7 +212,6 @@ def human_message(text: str, subsystem: str) -> str:
         ("heartbeat: started", "Heartbeat monitor started"),
         ("candidates:", "Candidate shortlist updated"),
     ]
-    low = text.lower()
     for key, label in mapping:
         if key in low:
             return f"{label} | {' | '.join(pairs)}" if pairs else label
@@ -234,6 +264,11 @@ def should_display_entry(entry: dict) -> bool:
     msg = normalize(str(entry.get("msg", "")))
     if not msg:
         return False
+    low = msg.lower()
+    if "stopreason=tooluse" in low:
+        return False
+    if "web_fetch failed" in low or "web fetch failed" in low or "access denied" in low or "verification required" in low or "just a moment" in low:
+        return True
     for snippet in HIDDEN_MESSAGE_SNIPPETS:
         if snippet in msg:
             return False
@@ -300,8 +335,9 @@ class Dashboard:
         self.screen_h = self.root.winfo_screenheight()
         self.compact_screen = self.screen_w <= 320 or self.screen_h <= 240
         self.safe_bottom = 8 if self.compact_screen else 3
+        self.bg_color = "#020308"
         self.root.title("Freeland Rocks Live")
-        self.root.configure(bg="#050505")
+        self.root.configure(bg=self.bg_color)
         self.root.geometry(f"{self.screen_w}x{self.screen_h}+0+0")
         self.root.attributes("-fullscreen", True)
         self.root.attributes("-topmost", True)
@@ -309,10 +345,11 @@ class Dashboard:
         self.root.bind("<Escape>", lambda _e: None)
 
         if self.compact_screen:
-            self.header_font = ("Monospace", -14, "bold")
-            self.meta_font = ("Monospace", -9, "bold")
-            self.body_font = ("Monospace", -11, "bold")
-            self.footer_font = ("Monospace", -9, "bold")
+            self.header_font = ("Monospace", -16, "bold")
+            self.meta_font = ("Monospace", -10, "bold")
+            self.body_font = ("Monospace", -12, "bold")
+            self.footer_font = ("Monospace", -10, "bold")
+            self.line_count_font = ("Monospace", -9, "bold")
             self.header_padx = 4
             self.body_padx = 6
             self.scrollbar_width = 12
@@ -321,9 +358,23 @@ class Dashboard:
             self.meta_font = ("Monospace", -11, "bold")
             self.body_font = ("Monospace", -12, "bold")
             self.footer_font = ("Monospace", -11, "bold")
+            self.line_count_font = ("Monospace", -12, "bold")
             self.header_padx = 8
             self.body_padx = 8
             self.scrollbar_width = 14
+
+        self.header_bg_color = self.bg_color
+        self.header_color = "#39ebff"
+        self.line_count_color = "#f1f5fb"
+        self.health_color = "#dbe7f6"
+        self.body_color = "#eef6ff"
+        self.info_color = "#00d7ff"
+        self.warn_color = "#ffd75f"
+        self.err_color = "#ff5f87"
+        self.land_color = "#5fff5f"
+        self.meta_color = "#90a1bc"
+        self.footer_color = "#ffd75f"
+        self.header_bar_height = max(abs(self.header_font[1]) + 8, 22)
 
         self.lines = deque(maxlen=MAX_LINES)
         self.last_key = None
@@ -333,39 +384,68 @@ class Dashboard:
         self.last_line_at = time.time()
         self.queue: queue.Queue[dict] = queue.Queue()
 
-        self.header = tk.Label(
+        self.header_canvas = tk.Canvas(
             self.root,
-            text="FREELAND ROCKS LIVE",
-            font=self.header_font,
-            fg="#7cf08a",
-            bg="#050505",
-            anchor="w",
-            padx=self.header_padx,
-            pady=2,
+            height=self.header_bar_height,
+            bg=self.bg_color,
+            bd=0,
+            highlightthickness=0,
         )
-        self.header.pack(fill="x")
+        self.header_canvas.pack(fill="x")
+        self.header_canvas.bind("<Configure>", self.on_header_resize)
+        self.header_rect = self.header_canvas.create_rectangle(
+            0,
+            0,
+            self.screen_w,
+            self.header_bar_height,
+            fill=self.header_bg_color,
+            outline="",
+        )
+        self.header_title = self.header_canvas.create_text(
+            self.header_padx,
+            self.header_bar_height // 2,
+            text="FREELAND ROCKS LIVE",
+            fill=self.header_color,
+            font=self.header_font,
+            anchor="w",
+        )
+        self.header_lines = self.header_canvas.create_text(
+            self.screen_w - self.header_padx,
+            self.header_bar_height // 2,
+            text="LINES 0",
+            fill=self.line_count_color,
+            font=self.line_count_font,
+            anchor="e",
+        )
+        self.header_rule = self.header_canvas.create_line(
+            0,
+            self.header_bar_height - 1,
+            self.screen_w,
+            self.header_bar_height - 1,
+            fill="#0a1118",
+        )
 
         self.healthbar = tk.Label(
             self.root,
             text="Gateway checking",
             font=self.meta_font,
-            fg="#f2f2f2",
-            bg="#050505",
+            fg=self.health_color,
+            bg=self.bg_color,
             anchor="w",
             padx=self.header_padx,
             pady=0,
         )
         self.healthbar.pack(fill="x")
 
-        self.body_frame = tk.Frame(self.root, bg="#050505")
+        self.body_frame = tk.Frame(self.root, bg=self.bg_color)
         self.body_frame.pack(fill="both", expand=True)
 
         self.scrollbar = tk.Scrollbar(
             self.body_frame,
             orient="vertical",
-            troughcolor="#111111",
-            bg="#2d2d2d",
-            activebackground="#5a5a5a",
+            troughcolor="#06080f",
+            bg="#10202c",
+            activebackground="#1f4456",
             width=self.scrollbar_width,
         )
         self.scrollbar.pack(side="right", fill="y")
@@ -373,8 +453,8 @@ class Dashboard:
         self.body = tk.Text(
             self.body_frame,
             font=self.body_font,
-            fg="#f3f3f3",
-            bg="#050505",
+            fg=self.body_color,
+            bg=self.bg_color,
             wrap="word",
             borderwidth=0,
             highlightthickness=0,
@@ -387,15 +467,15 @@ class Dashboard:
         )
         self.body.pack(side="left", fill="both", expand=True)
         self.scrollbar.config(command=self.body.yview)
-        self.body.tag_configure("info", foreground="#55d6ff")
-        self.body.tag_configure("warn", foreground="#ffbf3c")
-        self.body.tag_configure("err", foreground="#ff6161")
-        self.body.tag_configure("land", foreground="#7cf08a")
-        self.body.tag_configure("meta", foreground="#b0b0b0")
+        self.body.tag_configure("info", foreground=self.info_color)
+        self.body.tag_configure("warn", foreground=self.warn_color)
+        self.body.tag_configure("err", foreground=self.err_color)
+        self.body.tag_configure("land", foreground=self.land_color)
+        self.body.tag_configure("meta", foreground=self.meta_color)
 
         self.footer_frame = tk.Frame(
             self.root,
-            bg="#050505",
+            bg=self.bg_color,
             height=abs(self.footer_font[1]) + self.safe_bottom + 6,
         )
         self.footer_frame.pack(fill="x", side="bottom")
@@ -405,8 +485,8 @@ class Dashboard:
             self.footer_frame,
             text="",
             font=self.footer_font,
-            fg="#55d6ff",
-            bg="#050505",
+            fg=self.footer_color,
+            bg=self.bg_color,
             anchor="w",
             padx=self.header_padx,
             pady=1,
@@ -414,7 +494,8 @@ class Dashboard:
         self.footer.pack(fill="x", side="top", pady=(0, self.safe_bottom))
 
         self.seed_recent_entries()
-        self.render()
+        self.render_lines()
+        self.render_status()
 
         self.tail = subprocess.Popen(
             ["tail", "-n0", "-F", "-q", MAIN_LOG, ERR_LOG],
@@ -468,9 +549,23 @@ class Dashboard:
             entry["repeat"] = 1
             self.lines.append(entry)
             self.last_key = key
-        self.render()
+        self.render_lines()
 
-    def render(self) -> None:
+    def scroll_to_bottom(self) -> None:
+        self.root.update_idletasks()
+        self.body.mark_set("insert", "end-1c")
+        self.body.see("insert")
+        self.body.yview_pickplace("insert")
+        self.body.yview_moveto(1.0)
+
+    def on_header_resize(self, event: tk.Event) -> None:
+        width = max(int(event.width), 1)
+        self.header_canvas.coords(self.header_rect, 0, 0, width, self.header_bar_height)
+        self.header_canvas.coords(self.header_title, self.header_padx, self.header_bar_height // 2)
+        self.header_canvas.coords(self.header_lines, width - self.header_padx, self.header_bar_height // 2)
+        self.header_canvas.coords(self.header_rule, 0, self.header_bar_height - 1, width, self.header_bar_height - 1)
+
+    def render_lines(self) -> None:
         self.body.configure(state="normal")
         self.body.delete("1.0", "end")
         for item in self.lines:
@@ -481,13 +576,16 @@ class Dashboard:
                 message = compact_message(message)
             if item["repeat"] > 1:
                 message += f" x{item['repeat']}"
-            line = f"{item['ts']} {icon:<5} {message}"
-            self.body.insert("end", line + "\n", (tag,))
-        self.root.update_idletasks()
-        self.body.see("end")
-        self.body.yview_pickplace("end")
-        self.body.yview_moveto(1.0)
+            self.body.insert("end", f"{item['ts']} ", ("meta",))
+            self.body.insert("end", f"{icon:<5} ", (tag,))
+            self.body.insert("end", message, (tag,))
+            self.body.insert("end", "\n")
         self.body.configure(state="disabled")
+        self.header_canvas.itemconfigure(self.header_lines, text=f"LINES {len(self.lines)}")
+        self.root.after_idle(self.scroll_to_bottom)
+        self.root.after(30, self.scroll_to_bottom)
+
+    def render_status(self) -> None:
         self.healthbar.configure(text=self.health)
         self.footer.configure(text=self.status)
 
@@ -539,10 +637,10 @@ class Dashboard:
         except Exception:
             gateway_state = "unknown"
         self.health = (
-            f"GATEWAY {gateway_state.upper()} | LAST {int(idle_delta)}s | LINES {len(self.lines)}"
+            f"GATEWAY {gateway_state.upper()} | LAST {int(idle_delta)}s"
         )
         self.status = f"{datetime.now().strftime('%H:%M:%S')} HEARTBEAT {frame} alive"
-        self.render()
+        self.render_status()
         self.root.after(IDLE_FLUSH_SEC * 1000, self.poll_tail)
 
     def process_queue(self) -> None:
@@ -555,7 +653,7 @@ class Dashboard:
             self.push_line(item)
             changed = True
         if changed:
-            self.render()
+            self.render_status()
         self.root.after(200, self.process_queue)
 
     def run(self) -> None:

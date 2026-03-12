@@ -11,14 +11,18 @@ export interface PrismaLandSyncReport {
 }
 
 export async function syncLandSearchIntoPrisma(): Promise<PrismaLandSyncReport> {
-  const cwd = path.resolve(process.cwd(), "apps", "web-next");
+  const rootDir = process.cwd();
+  const cwd = path.resolve(rootDir, "apps", "web-next");
 
   return new Promise((resolve) => {
     const child = spawn("npm", ["run", "prisma:sync:land-search"], {
       cwd,
       env: {
         ...process.env,
-        DATABASE_URL: process.env.WEB_NEXT_DATABASE_URL ?? process.env.DATABASE_URL ?? "file:./prisma/dev.db",
+        DATABASE_URL:
+          process.env.WEB_NEXT_DATABASE_URL ??
+          process.env.DATABASE_URL ??
+          `file:${path.resolve(rootDir, "apps/web-next/prisma/dev.db")}`,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

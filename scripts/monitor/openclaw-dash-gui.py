@@ -241,23 +241,23 @@ def compact_message(text: str) -> str:
 
 def icon_for(level: str, subsystem: str, is_land: bool) -> str:
     if is_land:
-        return "LAND"
+        return ")-->"
     if level == "err":
-        return "ERR"
+        return "XXX"
     if level == "warn":
-        return "WARN"
+        return "/!\\"
     sub = (subsystem or "").lower()
     if "heartbeat" in sub:
-        return "HEART"
+        return "<3"
     if "canvas" in sub:
         return "MAP"
     if "health" in sub:
-        return "CHECK"
+        return "OK"
     if "embedded" in sub or "agent" in sub:
-        return "AI"
+        return "BOT"
     if "gateway" in sub:
-        return "GATE"
-    return "INFO"
+        return "->"
+    return "..."
 
 
 def should_display_entry(entry: dict) -> bool:
@@ -364,7 +364,7 @@ class Dashboard:
             self.scrollbar_width = 14
 
         self.header_bg_color = self.bg_color
-        self.header_color = "#39ebff"
+        self.header_color = "#7cf08a"
         self.line_count_color = "#f1f5fb"
         self.health_color = "#dbe7f6"
         self.body_color = "#eef6ff"
@@ -404,7 +404,7 @@ class Dashboard:
         self.header_title = self.header_canvas.create_text(
             self.header_padx,
             self.header_bar_height // 2,
-            text="FREELAND ROCKS LIVE",
+            text=")--> FREELAND ROCKS LIVE",
             fill=self.header_color,
             font=self.header_font,
             anchor="w",

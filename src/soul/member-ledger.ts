@@ -38,6 +38,7 @@ export interface MemberProfile {
   userId: string;
   username?: string;
   displayName?: string;
+  walletAddress?: string;
   joinedAt: string;
   lastActiveAt: string;
   stampHoldings: MemberStampHoldings;
@@ -99,6 +100,7 @@ function normalizeProfile(partial: Partial<MemberProfile> & { userId: string }):
     userId: partial.userId,
     username: typeof partial.username === "string" ? partial.username : undefined,
     displayName: typeof partial.displayName === "string" ? partial.displayName : undefined,
+    walletAddress: typeof partial.walletAddress === "string" ? partial.walletAddress : undefined,
     joinedAt: typeof partial.joinedAt === "string" ? partial.joinedAt : now,
     lastActiveAt: typeof partial.lastActiveAt === "string" ? partial.lastActiveAt : now,
     stampHoldings,
@@ -163,6 +165,7 @@ function updateDerivedFields(profile: MemberProfile): void {
   if (profile.votesCast >= 1) addBadge(profile, "voter");
   if (profile.votesCast >= 10) addBadge(profile, "active-governor");
   if (profile.totalContributedSOL >= 10) addBadge(profile, "major-supporter");
+  if (profile.walletAddress) addBadge(profile, "wallet-linked");
 }
 
 export function ensureMember(
@@ -285,6 +288,59 @@ export function recordGovernanceVoteForMember(input: {
   });
 }
 
+export function setMemberWallet(input: {
+  userId: string;
+  walletAddress: string;
+  username?: string;
+  displayName?: string;
+}): MemberProfile {
+  return withProfiles((profiles) => {
+    let profile = profiles.find((item) => item.userId === input.userId);
+    if (!profile) {
+      profile = normalizeProfile({
+        userId: input.userId,
+        username: input.username,
+        displayName: input.displayName,
+      });
+      profiles.push(profile);
+      addBadge(profile, "member");
+    }
+
+    if (input.username) profile.username = input.username;
+    if (input.displayName) profile.displayName = input.displayName;
+    profile.walletAddress = input.walletAddress;
+    profile.lastActiveAt = new Date().toISOString();
+    updateDerivedFields(profile);
+    return profile;
+  });
+}
+
+export function clearMemberWallet(input: {
+  userId: string;
+  username?: string;
+  displayName?: string;
+}): MemberProfile {
+  return withProfiles((profiles) => {
+    let profile = profiles.find((item) => item.userId === input.userId);
+    if (!profile) {
+      profile = normalizeProfile({
+        userId: input.userId,
+        username: input.username,
+        displayName: input.displayName,
+      });
+      profiles.push(profile);
+      addBadge(profile, "member");
+    }
+
+    if (input.username) profile.username = input.username;
+    if (input.displayName) profile.displayName = input.displayName;
+    profile.walletAddress = undefined;
+    profile.lastActiveAt = new Date().toISOString();
+    updateDerivedFields(profile);
+    return profile;
+  });
+}
+
 export function getMemberProfile(userId: string): MemberProfile | null {
   const found = loadProfiles().find((profile) => profile.userId === userId);
   return found ?? null;
@@ -330,6 +386,7 @@ export function formatMemberProfile(profile: MemberProfile): string {
   return [
     `Member: ${profile.displayName ?? profile.username ?? profile.userId}`,
     `User ID: ${profile.userId}`,
+    `Wallet: ${profile.walletAddress ?? "not set"}`,
     `Governance weight: ${profile.governanceWeight}`,
     `Contribution: ${profile.totalContributedSOL.toFixed(4)} SOL`,
     `Stamps: supporter ${profile.stampHoldings.supporter}, parcel ${profile.stampHoldings.parcel}, patron ${profile.stampHoldings.patron}, genesis ${profile.stampHoldings.genesis}`,

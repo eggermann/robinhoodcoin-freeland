@@ -27,8 +27,13 @@ export interface Opportunity {
   notes?: string;
   tags: string[];
   discoveredAt: string;
+  updatedAt: string;
   status: OpportunityStatus;
   score: number;
+  assignee?: string;
+  nextAction?: string;
+  contactEmail?: string;
+  lastContactedAt?: string;
 }
 
 const DATA_DIR = "./data/opportunities";
@@ -38,10 +43,33 @@ function ensureDir(): void {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeOpportunity(raw: Opportunity): Opportunity {
+  const discoveredAt = typeof raw.discoveredAt === "string"
+    ? raw.discoveredAt
+    : new Date().toISOString();
+
+  return {
+    ...raw,
+    discoveredAt,
+    updatedAt: typeof raw.updatedAt === "string" ? raw.updatedAt : discoveredAt,
+    assignee: normalizeOptionalText(raw.assignee),
+    nextAction: normalizeOptionalText(raw.nextAction),
+    contactEmail: normalizeOptionalText(raw.contactEmail),
+    lastContactedAt: normalizeOptionalText(raw.lastContactedAt),
+  };
+}
+
 function loadOpportunities(): Opportunity[] {
   ensureDir();
   if (!fs.existsSync(OPPORTUNITIES_FILE)) return [];
-  return JSON.parse(fs.readFileSync(OPPORTUNITIES_FILE, "utf-8")) as Opportunity[];
+  const parsed = JSON.parse(fs.readFileSync(OPPORTUNITIES_FILE, "utf-8")) as Opportunity[];
+  return Array.isArray(parsed) ? parsed.map(normalizeOpportunity) : [];
 }
 
 function saveOpportunities(opportunities: Opportunity[]): void {
@@ -50,7 +78,7 @@ function saveOpportunities(opportunities: Opportunity[]): void {
 }
 
 export function scoreOpportunity(
-  input: Omit<Opportunity, "id" | "discoveredAt" | "status" | "score">,
+  input: Omit<Opportunity, "id" | "discoveredAt" | "updatedAt" | "status" | "score">,
 ): number {
   let score = 0;
 
@@ -75,7 +103,7 @@ export function scoreOpportunity(
 }
 
 export function addOpportunity(
-  input: Omit<Opportunity, "id" | "discoveredAt" | "status" | "score">,
+  input: Omit<Opportunity, "id" | "discoveredAt" | "updatedAt" | "status" | "score">,
 ): Opportunity {
   const opportunities = loadOpportunities();
 
@@ -83,6 +111,7 @@ export function addOpportunity(
     ...input,
     id: `OPP-${Date.now().toString(36).toUpperCase()}`,
     discoveredAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     status: "new",
     score: scoreOpportunity(input),
   };
@@ -107,6 +136,35 @@ export function setOpportunityStatus(id: string, status: OpportunityStatus): Opp
   const opp = opportunities.find((o) => o.id === id);
   if (!opp) throw new Error(`Opportunity ${id} not found`);
   opp.status = status;
+  opp.updatedAt = new Date().toISOString();
+  saveOpportunities(opportunities);
+  return opp;
+}
+
+export function assignOpportunity(input: {
+  id: string;
+  assignee: string;
+  nextAction: string;
+  contactEmail?: string;
+}): Opportunity {
+  const opportunities = loadOpportunities();
+  const opp = opportunities.find((item) => item.id === input.id);
+  if (!opp) throw new Error(`Opportunity ${input.id} not found`);
+
+  const assignee = input.assignee.trim();
+  const nextAction = input.nextAction.trim();
+  const contactEmail = normalizeOptionalText(input.contactEmail);
+
+  if (!assignee) throw new Error("Assignee is required.");
+  if (!nextAction) throw new Error("Next action is required.");
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    throw new Error("Contact email must be a valid email address.");
+  }
+
+  opp.assignee = assignee;
+  opp.nextAction = nextAction;
+  opp.contactEmail = contactEmail;
+  opp.updatedAt = new Date().toISOString();
   saveOpportunities(opportunities);
   return opp;
 }

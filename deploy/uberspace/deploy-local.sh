@@ -71,7 +71,7 @@ fi
 
 cd "${ROOT_DIR}"
 WEB_NEXT_DIR="${ROOT_DIR}/apps/web-next"
-WEB_NEXT_DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:./prisma/dev.db}}"
+WEB_NEXT_DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:${WEB_NEXT_DIR}/prisma/dev.db}}"
 
 if [[ "${SKIP_LOCAL_BUILD}" != "true" ]]; then
   echo "Installing local dependencies..."
@@ -88,6 +88,12 @@ if [[ "${SKIP_LOCAL_BUILD}" != "true" ]]; then
     (
       cd "${WEB_NEXT_DIR}"
       npm ci
+    )
+
+    echo "Syncing Next app portfolio data locally..."
+    (
+      cd "${WEB_NEXT_DIR}"
+      DATABASE_URL="${WEB_NEXT_DATABASE_URL}" npm run prisma:sync:portfolios
     )
 
     echo "Building Next app locally..."

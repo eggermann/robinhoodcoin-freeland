@@ -5,6 +5,15 @@ import { OPENCLAW } from "../../shared/config.js";
 import { getLandSearchManager, type LandListing } from "../land-search.js";
 
 const REPORT_LOG_FILE = "./data/land-search/autonomous-scout-log.jsonl";
+const BLOCKED_SOURCES_FILE = "./data/land-search/blocked-sources.json";
+const BLOCKED_SOURCE_COOLDOWN_MS = Number(
+  process.env.LAND_SCOUT_BLOCKED_SOURCE_COOLDOWN_MS ?? `${12 * 60 * 60 * 1000}`,
+);
+const DEFAULT_AVOID_SOURCE_HOSTS = (process.env.LAND_SCOUT_AVOID_SOURCE_HOSTS
+  ?? "landwatch.com,land.com,landsearch.com,landandfarm.com,propiedades.com")
+  .split(",")
+  .map((item) => item.trim().toLowerCase())
+  .filter(Boolean);
 
 export interface AutonomousLandScoutConfig {
   maxCandidatesPerRun: number;
@@ -19,6 +28,8 @@ export interface SourceVerificationResult {
   reachable: boolean;
   statusCode?: number;
   error?: string;
+  blocked?: boolean;
+  host?: string;
 }
 
 export interface ScoutCandidateInput {
@@ -56,6 +67,16 @@ export interface AutonomousLandScoutReport {
   rejected: number;
   checks: CandidateEvaluation[];
   error?: string;
+}
+
+interface BlockedSourceRecord {
+  host: string;
+  sampleUrl: string;
+  reason: string;
+  statusCode?: number;
+  blockedAt: string;
+  cooldownUntil: string;
+  hits: number;
 }
 
 interface OpenAIMessage {
@@ -120,6 +141,76 @@ function normalizeSourceUrl(url: string): string {
   } catch {
     return url.trim().replace(/\/+$/, "");
   }
+}
+
+function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return url.trim().toLowerCase();
+  }
+}
+
+function loadBlockedSourceRecords(now = new Date()): Map<string, BlockedSourceRecord> {
+  try {
+    if (!fs.existsSync(BLOCKED_SOURCES_FILE)) return new Map();
+    const raw = JSON.parse(fs.readFileSync(BLOCKED_SOURCES_FILE, "utf-8")) as unknown;
+    if (!Array.isArray(raw)) return new Map();
+
+    const active = raw
+      .filter((item): item is BlockedSourceRecord => {
+        if (typeof item !== "object" || item === null) return false;
+        const record = item as Partial<BlockedSourceRecord>;
+        return typeof record.host === "string"
+          && typeof record.cooldownUntil === "string"
+          && Date.parse(record.cooldownUntil) > now.getTime();
+      })
+      .map((record) => [record.host, record] as const);
+
+    return new Map(active);
+  } catch {
+    return new Map();
+  }
+}
+
+function saveBlockedSourceRecords(records: Map<string, BlockedSourceRecord>): void {
+  fs.mkdirSync(path.dirname(BLOCKED_SOURCES_FILE), { recursive: true });
+  fs.writeFileSync(
+    BLOCKED_SOURCES_FILE,
+    JSON.stringify(
+      [...records.values()].sort((a, b) => a.host.localeCompare(b.host)),
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+}
+
+function rememberBlockedSource(
+  records: Map<string, BlockedSourceRecord>,
+  url: string,
+  reason: string,
+  statusCode?: number,
+  now = new Date(),
+): void {
+  const host = sourceHost(url);
+  const existing = records.get(host);
+  const blockedAt = now.toISOString();
+  const cooldownUntil = new Date(now.getTime() + BLOCKED_SOURCE_COOLDOWN_MS).toISOString();
+
+  records.set(host, {
+    host,
+    sampleUrl: url,
+    reason,
+    statusCode,
+    blockedAt,
+    cooldownUntil,
+    hits: (existing?.hits ?? 0) + 1,
+  });
+}
+
+function activeBlockedHosts(): string[] {
+  return [...loadBlockedSourceRecords().keys()].sort();
 }
 
 function buildListingFingerprint(candidate: ScoutCandidateInput): string {
@@ -214,6 +305,7 @@ async function verifySourceReachability(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
+  const host = sourceHost(url);
   try {
     let response = await fetch(url, {
       method: "HEAD",
@@ -229,18 +321,27 @@ async function verifySourceReachability(
       });
     }
 
-    const reachable = response.status < 400 || response.status === 401 || response.status === 403;
+    const blocked = response.status === 403 || response.status === 429;
+    const reachable = response.status < 400 || response.status === 401;
     return {
       checked: true,
       reachable,
+      blocked,
+      host,
       statusCode: response.status,
-      error: reachable ? undefined : `HTTP ${response.status}`,
+      error: blocked
+        ? `blocked (${response.status})`
+        : reachable
+          ? undefined
+          : `HTTP ${response.status}`,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return {
       checked: true,
       reachable: false,
+      blocked: false,
+      host,
       error: message,
     };
   } finally {
@@ -262,6 +363,7 @@ function buildScoutPrompt(config: AutonomousLandScoutConfig): string {
   const manager = getLandSearchManager();
   const criteria = manager.getCriteria();
   const budgetUsd = Math.round(criteria.maxPriceSOL * 100);
+  const blockedHosts = [...new Set([...DEFAULT_AVOID_SOURCE_HOSTS, ...activeBlockedHosts()])];
 
   return [
     "Find real-world land listings and return candidates JSON only.",
@@ -271,6 +373,10 @@ function buildScoutPrompt(config: AutonomousLandScoutConfig): string {
     `Size between ${criteria.minSizeAcres} and ${criteria.maxSizeAcres ?? "any"} acres.`,
     `Preferred zoning: ${criteria.zoningTypes.join(", ")}.`,
     "Only include listings with concrete source URLs.",
+    "If a site shows access denied, verification required, Cloudflare, or 'just a moment', treat it as blocked and do not retry that domain in this run.",
+    blockedHosts.length > 0
+      ? `Avoid these temporarily blocked domains on this machine: ${blockedHosts.join(", ")}.`
+      : "Prefer sources that work without browser challenge pages.",
   ].join("\n");
 }
 
@@ -378,18 +484,50 @@ export async function runAutonomousLandScoutCycle(
     const existingBySource = new Set(existing.map((listing) => normalizeSourceUrl(listing.sourceUrl)));
     const existingFingerprints = new Set(existing.map((listing) => listingFingerprint(listing)));
     const runFingerprints = new Set<string>();
+    const blockedSources = loadBlockedSourceRecords();
 
     for (const candidate of candidates) {
+      const candidateHost = sourceHost(candidate.sourceUrl);
+      const blockedRecord = blockedSources.get(candidateHost);
+      if (blockedRecord) {
+        report.rejected += 1;
+        report.checks.push({
+          candidate,
+          accepted: false,
+          reason: `source blocked cooldown active until ${blockedRecord.cooldownUntil}`,
+          verification: {
+            checked: true,
+            reachable: false,
+            blocked: true,
+            host: candidateHost,
+            statusCode: blockedRecord.statusCode,
+            error: blockedRecord.reason,
+          },
+        });
+        continue;
+      }
+
       const verification = config.verifySourceReachability
         ? await verifySourceReachability(candidate.sourceUrl, config.sourceTimeoutMs)
         : { checked: false, reachable: true };
 
       if (!verification.reachable) {
+        if (verification.blocked) {
+          rememberBlockedSource(
+            blockedSources,
+            candidate.sourceUrl,
+            verification.error ?? "blocked",
+            verification.statusCode,
+          );
+          saveBlockedSourceRecords(blockedSources);
+        }
         report.rejected += 1;
         report.checks.push({
           candidate,
           accepted: false,
-          reason: `source verification failed${verification.statusCode ? ` (${verification.statusCode})` : ""}`,
+          reason: verification.blocked
+            ? `source blocked${verification.statusCode ? ` (${verification.statusCode})` : ""}`
+            : `source verification failed${verification.statusCode ? ` (${verification.statusCode})` : ""}`,
           verification,
         });
         continue;

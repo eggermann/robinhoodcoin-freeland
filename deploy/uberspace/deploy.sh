@@ -20,7 +20,7 @@ export PATH="${HOME}/.local/bin:${PATH}"
 
 cd "${ROOT_DIR}"
 WEB_NEXT_DIR="${ROOT_DIR}/apps/web-next"
-WEB_NEXT_DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:./prisma/dev.db}}"
+WEB_NEXT_DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:${WEB_NEXT_DIR}/prisma/dev.db}}"
 
 if ! command -v npm >/dev/null 2>&1; then
   echo "npm not found. Install/select Node.js first (for Uberspace: uberspace tools version use node 22)." >&2
@@ -41,6 +41,12 @@ if [[ -f "${WEB_NEXT_DIR}/package.json" ]]; then
   (
     cd "${WEB_NEXT_DIR}"
     npm ci
+  )
+
+  echo "Syncing Next app portfolio data..."
+  (
+    cd "${WEB_NEXT_DIR}"
+    DATABASE_URL="${WEB_NEXT_DATABASE_URL}" npm run prisma:sync:portfolios
   )
 
   echo "Building Next app..."

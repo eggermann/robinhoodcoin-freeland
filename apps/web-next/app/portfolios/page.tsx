@@ -301,7 +301,7 @@ export default async function PortfoliosPage() {
             <div style={{ color: "#94a3b8", fontSize: 12 }}>Land scout last run</div>
             <strong>
               {runtime.landScoutLastStatus === "never"
-                ? "No runs yet"
+                ? "No runs recorded"
                 : runtime.landScoutLastStatus === "ok"
                   ? "OK"
                   : "Failed"}
@@ -419,7 +419,7 @@ export default async function PortfoliosPage() {
           </article>
         ))}
       </div>
-      {verifiedParcels.length === 0 ? <p>No parcel-level listings synced yet.</p> : null}
+      {verifiedParcels.length === 0 ? <p>No verified parcel rows are available in Prisma right now.</p> : null}
 
       <h2 style={{ margin: "22px 0 10px" }}>Scout Lanes</h2>
       <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>
@@ -472,7 +472,7 @@ function RegionSection({
       <h2 style={{ margin: "0 0 6px" }}>{title}</h2>
       <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>{body}</p>
       {parcels.length === 0 ? (
-        <p style={{ margin: 0, color: "#94a3b8" }}>No active parcel or lane records in this board yet.</p>
+        <p style={{ margin: 0, color: "#94a3b8" }}>No current parcel or lane records match this board.</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
           {parcels.map((parcel) => {

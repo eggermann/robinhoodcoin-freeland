@@ -3,6 +3,7 @@ import { BOT } from "../../shared/config.js";
 import { getSoulNetwork } from "../../soul/network.js";
 import {
   addOpportunity,
+  assignOpportunity,
   createProposalFromOpportunity,
   listOpportunities,
   setOpportunityStatus,
@@ -64,10 +65,13 @@ export async function handleOpportunities(ctx: Context): Promise<void> {
   const lines = opportunities.map((opportunity, idx) => {
     const value = opportunity.estimatedValueSOL ? `${opportunity.estimatedValueSOL} SOL` : "n/a";
     const deadline = formatDateLabel(opportunity.deadline);
+    const assignee = opportunity.assignee ? `\n   owner: ${escapeTelegramMarkdown(opportunity.assignee)}` : "";
+    const nextAction = opportunity.nextAction ? `\n   next: ${escapeTelegramMarkdown(opportunity.nextAction)}` : "";
+    const contact = opportunity.contactEmail ? `\n   contact: ${escapeTelegramMarkdown(opportunity.contactEmail)}` : "";
     return `${idx + 1}. *${escapeTelegramMarkdown(opportunity.title)}* (${escapeTelegramMarkdown(opportunity.type)})
    score: ${opportunity.score}/100 | value: ${value} | status: ${opportunity.status}
    deadline: ${deadline}
-   source: ${escapeTelegramMarkdown(opportunity.source)}`;
+   source: ${escapeTelegramMarkdown(opportunity.source)}${assignee}${nextAction}${contact}`;
   });
 
   await replyPlain(ctx, `🎯 *Top Opportunities*\n\n${lines.join("\n\n")}`);
@@ -207,6 +211,44 @@ export async function handleApproveOpportunity(ctx: Context): Promise<void> {
     await replyPlain(
       ctx,
       `✅ Opportunity approved by admin.\n\n📋 Proposal created: \`${escapeTelegramMarkdown(proposal.id)}\`\n📝 Title: *${escapeTelegramMarkdown(proposal.title)}*\n📊 Status: ${escapeTelegramMarkdown(proposal.status)}\n\nNext: \`/activate ${escapeTelegramMarkdown(proposal.id)}\``,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await replyPlain(ctx, `❌ ${escapeTelegramMarkdown(message)}`);
+  }
+}
+
+export async function handleAssignOpportunity(ctx: Context): Promise<void> {
+  const text = ctx.message?.text ?? "";
+  const args = text.replace(/^\/assignopp\s*/, "").trim();
+
+  if (!args) {
+    await replyPlain(
+      ctx,
+      "🎯 *Assign Opportunity*\n\nUsage:\n`/assignopp <OPP-ID> | <assignee> | <next action> | <contact email or ->>`\n\nExample:\n`/assignopp OPP-ABC123 | little-john | email the land trust and ask for next funding round | grants@example.org`",
+    );
+    return;
+  }
+
+  const parts = args.split("|").map((part) => part.trim());
+  if (parts.length < 3) {
+    await replyPlain(ctx, "❌ Invalid format. Use `/assignopp` without args to see the template.");
+    return;
+  }
+
+  const [id, assignee, nextAction, rawContactEmail] = parts;
+
+  try {
+    const opportunity = assignOpportunity({
+      id,
+      assignee,
+      nextAction,
+      contactEmail: rawContactEmail && rawContactEmail !== "-" ? rawContactEmail : undefined,
+    });
+
+    await replyPlain(
+      ctx,
+      `✅ *Opportunity routed*\n\n🆔 \`${escapeTelegramMarkdown(opportunity.id)}\`\n👤 Owner: ${escapeTelegramMarkdown(opportunity.assignee ?? "n/a")}\n📬 Contact: ${escapeTelegramMarkdown(opportunity.contactEmail ?? "n/a")}\n➡️ Next: ${escapeTelegramMarkdown(opportunity.nextAction ?? "n/a")}\n📊 Status: ${escapeTelegramMarkdown(opportunity.status)}`,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

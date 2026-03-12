@@ -28,11 +28,21 @@ vi.mock("../land-search.js", () => ({
 }));
 
 const ORIGINAL_ENV = { ...process.env };
+const EXISTS_SYNC_ORIGINAL = fs.existsSync.bind(fs);
+const READ_FILE_SYNC_ORIGINAL = fs.readFileSync.bind(fs) as typeof fs.readFileSync;
+const BLOCKED_SOURCES_FILE_FRAGMENT = "blocked-sources.json";
 let fetchMock: ReturnType<typeof vi.fn>;
+let existsSyncSpy: any;
+let readFileSyncSpy: any;
+let writeFileSyncSpy: any;
 
 describe("runAutonomousLandScoutCycle", () => {
   beforeEach(() => {
     vi.resetModules();
+    landSearchMocks.addListing.mockClear();
+    landSearchMocks.addToShortlist.mockClear();
+    landSearchMocks.getListings.mockClear();
+    landSearchMocks.getCriteria.mockClear();
     process.env = {
       ...ORIGINAL_ENV,
       OPENCLAW_GATEWAY_URL: "http://gateway.local:18789",
@@ -44,12 +54,26 @@ describe("runAutonomousLandScoutCycle", () => {
 
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
+    existsSyncSpy = vi.spyOn(fs, "existsSync").mockImplementation((filePath: fs.PathLike) => {
+      if (String(filePath).includes(BLOCKED_SOURCES_FILE_FRAGMENT)) {
+        return false;
+      }
+      return EXISTS_SYNC_ORIGINAL(filePath);
+    });
+    readFileSyncSpy = vi.spyOn(fs, "readFileSync").mockImplementation(((filePath: fs.PathOrFileDescriptor, options?: any) => {
+      if (String(filePath).includes(BLOCKED_SOURCES_FILE_FRAGMENT)) {
+        return "";
+      }
+      return READ_FILE_SYNC_ORIGINAL(filePath as never, options);
+    }) as typeof fs.readFileSync);
+    writeFileSyncSpy = vi.spyOn(fs, "writeFileSync").mockImplementation(() => undefined);
     vi.spyOn(fs, "mkdirSync").mockImplementation(() => undefined);
     vi.spyOn(fs, "appendFileSync").mockImplementation(() => undefined);
   });
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV };
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -107,6 +131,11 @@ describe("runAutonomousLandScoutCycle", () => {
     expect(headers["x-openclaw-agent-id"]).toBe("little-john");
     expect(headers["x-openclaw-agent-role"]).toBe("land-scout");
     expect(headers.Authorization).toBe("Bearer gateway-secret");
+    const body = JSON.parse(String(init.body)) as {
+      messages?: Array<{ content?: string }>;
+    };
+    expect(body.messages?.[1]?.content).toContain("landandfarm.com");
+    expect(body.messages?.[1]?.content).toContain("propiedades.com");
   });
 
   it("returns a configured error when OPENCLAW_GATEWAY_URL is missing", async () => {
@@ -143,5 +172,125 @@ describe("runAutonomousLandScoutCycle", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(report.error).toContain("OpenClaw land-scout gateway error 502");
     expect(report.added).toBe(0);
+  });
+
+  it("treats 403 source verification as a blocked source and rejects the candidate", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  candidates: [
+                    {
+                      title: "Blocked Parcel",
+                      location: {
+                        country: "Portugal",
+                        region: "Alentejo",
+                      },
+                      sizeAcres: 8,
+                      priceUSD: 15000,
+                      zoning: "agricultural",
+                      description: "Looks fine but the source blocks access.",
+                      features: ["road access"],
+                      sourceUrl: "https://www.landwatch.com/listing/blocked-parcel",
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        status: 403,
+      });
+
+    const { runAutonomousLandScoutCycle } = await import("./autonomous-land-scout.js");
+    const report = await runAutonomousLandScoutCycle({
+      maxCandidatesPerRun: 1,
+      shortlistMinScore: 80,
+      verifySourceReachability: true,
+      sourceTimeoutMs: 2000,
+      regionHint: "EU",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(report.added).toBe(0);
+    expect(report.rejected).toBe(1);
+    expect(report.checks[0]?.reason).toContain("source blocked");
+    expect(report.checks[0]?.verification.blocked).toBe(true);
+    expect(writeFileSyncSpy).toHaveBeenCalled();
+    expect(landSearchMocks.addListing).not.toHaveBeenCalled();
+  });
+
+  it("adds blocked hosts to the scout prompt and skips those hosts on cooldown", async () => {
+    const activeCooldown = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    existsSyncSpy.mockImplementation((filePath: fs.PathLike) => String(filePath).includes("blocked-sources.json"));
+    readFileSyncSpy.mockImplementation((filePath: fs.PathOrFileDescriptor) => {
+      if (String(filePath).includes("blocked-sources.json")) {
+        return JSON.stringify([
+          {
+            host: "landwatch.com",
+            sampleUrl: "https://www.landwatch.com/listing/blocked-parcel",
+            reason: "blocked (403)",
+            statusCode: 403,
+            blockedAt: new Date().toISOString(),
+            cooldownUntil: activeCooldown,
+            hits: 2,
+          },
+        ]);
+      }
+      return "";
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                candidates: [
+                  {
+                    title: "Retry Parcel",
+                    location: {
+                      country: "Portugal",
+                      region: "Alentejo",
+                    },
+                    sizeAcres: 5,
+                    priceUSD: 12000,
+                    zoning: "agricultural",
+                    description: "Would normally be fine.",
+                    features: ["road access"],
+                    sourceUrl: "https://www.landwatch.com/listing/retry-parcel",
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+    });
+
+    const { runAutonomousLandScoutCycle } = await import("./autonomous-land-scout.js");
+    const report = await runAutonomousLandScoutCycle({
+      maxCandidatesPerRun: 1,
+      shortlistMinScore: 80,
+      verifySourceReachability: true,
+      sourceTimeoutMs: 2000,
+      regionHint: "EU",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const payload = JSON.parse(String(init.body)) as { messages: Array<{ content: string }> };
+    expect(payload.messages[1]?.content).toContain("Avoid these temporarily blocked domains on this machine:");
+    expect(payload.messages[1]?.content).toContain("landwatch.com");
+    expect(report.rejected).toBe(1);
+    expect(report.checks[0]?.reason).toContain("source blocked cooldown active");
+    expect(landSearchMocks.addListing).not.toHaveBeenCalled();
   });
 });

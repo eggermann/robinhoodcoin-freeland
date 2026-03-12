@@ -37,6 +37,7 @@ import {
   handleLands,
   handleLandStamp,
   handleStampMint,
+  handleWallet,
   handleMember,
 } from "./commands/stamps.js";
 import {
@@ -49,6 +50,7 @@ import {
   handleOpportunities,
   handleScout,
   handleApproveOpportunity,
+  handleAssignOpportunity,
 } from "./commands/soul.js";
 import { registerChatHandlers } from "./handlers/chat.js";
 import { startReminderLoop } from "./loops/reminders.js";
@@ -142,6 +144,7 @@ function registerCommands(bot: Bot<BotContext>): void {
   bot.command("lands", handleLands);
   bot.command("landstamp", handleLandStamp);
   bot.command("stampmint", handleStampMint);
+  bot.command("wallet", handleWallet);
   bot.command("member", handleMember);
 
   // Community commands
@@ -154,6 +157,7 @@ function registerCommands(bot: Bot<BotContext>): void {
   bot.command("opportunities", handleOpportunities);
   bot.command("scout", handleScout);
   bot.command("approveopp", handleApproveOpportunity);
+  bot.command("assignopp", handleAssignOpportunity);
 }
 
 function spawnSoulAgents(): void {

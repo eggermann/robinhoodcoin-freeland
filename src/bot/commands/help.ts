@@ -27,7 +27,8 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /tiers — Stamp tier info & benefits
 /lands — List selectable lands (portfolio + shortlist)
 /landstamp — Create a stamp batch from selected land (Wikipedia + semantic motifs)
-/stampmint \`<CAMP-ID> <qty?>\` — Record stamp mint/support and update member weight
+/wallet \`<solana-address|clear>\` — Link your Solana wallet for voting and stamp delivery
+/stampmint \`<CAMP-ID> <qty?>\` — Mint stamp(s) to your registered wallet and update member weight
 /member — Show your unified DAO + Stamp member profile
 
 *── Community ──*
@@ -37,6 +38,7 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /soul — Soul network status
 /opportunities — Top grants, auctions, and sponsorship leads
 /scout — Add a new grant/auction/sponsorship opportunity
+/assignopp \`<OPP-ID> | <assignee> | <next action> | <email or ->\` — Route a funding lead to a Sherwood operator
 /approveopp \`<OPP-ID>\` — Admin approval: convert opportunity into proposal
 /autonomy — Run one full OpenClaw autonomous experience cycle now
 
@@ -48,7 +50,9 @@ _I know the charter, the mission, and the precedents._
 _Every conversation plants a seed. 🌿_
 
 🔗 *Links*
-• Website: robinhoodcoin.org
+• Website: freeland.rocks
+• Community: t.me/robinhoodcoin
+• Bot: t.me/RobinHoodCoinBot
 • Telegram: t.me/robinhoodcoin
 • GitHub: github.com/robinhoodcoin`,
   );

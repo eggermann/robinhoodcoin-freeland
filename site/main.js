@@ -141,9 +141,9 @@ function renderCampaigns(data) {
     const card = document.createElement("div");
     card.className = "campaign-card";
     const title = document.createElement("h4");
-    title.textContent = "No active campaigns yet";
+    title.textContent = "No active campaigns in this dashboard snapshot";
     const text = document.createElement("p");
-    text.textContent = "Create the first campaign via /landstamp or let the autonomous driver launch one.";
+    text.textContent = "When the bot marks campaigns active, they appear here automatically.";
     card.appendChild(title);
     card.appendChild(text);
     container.appendChild(card);
@@ -203,12 +203,12 @@ function renderPortfolio(data) {
 
   if (data.portfolio.total === 0) {
     emptyState.hidden = false;
-    map.innerHTML = '<div class="portfolio-map__placeholder">🗺️ Interactive map coming soon — showing all freeland parcels worldwide</div>';
+    map.innerHTML = '<div class="portfolio-map__placeholder">🗺️ No deeded parcels are recorded in the current dashboard snapshot.</div>';
     return;
   }
 
   emptyState.hidden = true;
-  map.innerHTML = `<div class="portfolio-map__placeholder">🗺️ ${data.portfolio.total} parcel(s) tracked. Map integration is the next frontend milestone.</div>`;
+  map.innerHTML = `<div class="portfolio-map__placeholder">🗺️ ${data.portfolio.total} parcel(s) tracked in the live dashboard snapshot.</div>`;
 
   data.portfolio.parcels.forEach((parcel) => {
     const card = document.createElement("article");
@@ -255,7 +255,7 @@ function applyTransparency(data) {
   if (reportStatus) {
     reportStatus.textContent = data.reports.latestPeriod
       ? `Latest report period: ${data.reports.latestPeriod}`
-      : "No monthly report generated yet. Run /report or the autonomy daemon to publish one.";
+      : "No monthly report file is published in the current dashboard snapshot.";
   }
 
   if (reportGenerated) {

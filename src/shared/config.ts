@@ -1,7 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
 import { Keypair, Connection, clusterApiUrl } from "@solana/web3.js";
 import fs from "node:fs";
 import path from "node:path";
+
+dotenv.config();
 
 const campaignModeEnabled =
   (process.env.OPENCLAW_CAMPAIGN_MODE ?? "false").toLowerCase() === "true";
@@ -55,6 +57,20 @@ export const NFT = {
   collectionName: process.env.NFT_COLLECTION_NAME ?? "Freeland Stamps",
   collectionSymbol: process.env.NFT_COLLECTION_SYMBOL ?? "FSTAMP",
   baseUri: process.env.NFT_BASE_URI ?? "https://robinhoodcoin.org/api/metadata/",
+} as const;
+
+export const STAMP_RUNTIME = {
+  metadataOutputDir: process.env.STAMP_METADATA_OUTPUT_DIR ?? "./data/stamps/metadata",
+  imageBaseUri: process.env.STAMP_IMAGE_BASE_URI ?? "",
+  externalUrl: process.env.STAMP_EXTERNAL_URL ?? "https://freeland.rocks",
+  collectionInfoPath: process.env.NFT_COLLECTION_INFO_PATH ?? "./keys/collection-info.json",
+} as const;
+
+export const GOVERNANCE = {
+  enforceTokenHolder:
+    (process.env.GOVERNANCE_ENFORCE_TOKEN_HOLDER ?? "true").toLowerCase() !== "false",
+  tokenMintAddress: process.env.RHC_MINT_ADDRESS ?? "",
+  minTokenBalance: Number(process.env.GOVERNANCE_MIN_RHC_BALANCE ?? "0.000001"),
 } as const;
 
 // ── Telegram bot config ──────────────────────────────────
@@ -134,6 +150,24 @@ export const NVIDIA = {
   temperature: Number(process.env.NVIDIA_TEMPERATURE ?? "0.7"),
   topP: Number(process.env.NVIDIA_TOP_P ?? "1"),
   thinking: (process.env.NVIDIA_THINKING ?? "false").toLowerCase() === "true",
+} as const;
+
+// ── Hugging Face image generation ──────────────────────
+export const HUGGINGFACE = {
+  apiKey:
+    process.env.HUGGINGFACE_API_KEY
+    ?? process.env.HF_TOKEN
+    ?? "",
+  baseUrl:
+    process.env.HUGGINGFACE_BASE_URL
+    ?? "https://router.huggingface.co/hf-inference/models",
+  textToImageModel:
+    process.env.HUGGINGFACE_TEXT_TO_IMAGE_MODEL
+    ?? "black-forest-labs/FLUX.1-schnell",
+  timeoutMs: Number(process.env.HUGGINGFACE_TIMEOUT_MS ?? "180000"),
+  outputDir: process.env.HUGGINGFACE_OUTPUT_DIR ?? "./data/stamps/generated",
+  width: Number(process.env.HUGGINGFACE_IMAGE_WIDTH ?? "1024"),
+  height: Number(process.env.HUGGINGFACE_IMAGE_HEIGHT ?? "1024"),
 } as const;
 
 // ── OpenClaw gateway config ──────────────────────────────

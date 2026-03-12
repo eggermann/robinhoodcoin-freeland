@@ -18,6 +18,8 @@
     "transfer:mint-authority": "tsx src/token/transfer-mint-authority.ts",
     "deploy:nft": "tsx src/nft/deploy.ts",
     "preview:stamp": "tsx src/nft/preview-semantic-stamp.ts",
+    "generate:hf-stamp": "tsx src/tools/generate-hf-stamp.ts",
+    "generate:campaign-copy": "tsx src/tools/generate-campaign-copy.ts",
     "deploy:uberspace": "bash ./deploy_uberspace",
     "deploy_uberspace": "bash ./deploy_uberspace",
     "sync:web-data": "tsx src/site/sync-dashboard.ts",
@@ -28,6 +30,7 @@
     "check:openclaw": "bash scripts/raspberrypi/openclaw-local-check.sh",
     "check:env": "bash scripts/raspberrypi/check-env-sanity.sh .env",
     "test:mail": "tsx src/tools/test-mail.ts",
+    "send:waitlist-update": "tsx src/tools/send-waitlist-update.ts",
     "start:mail-endpoint": "tsx src/tools/mail-endpoint.ts",
     "notify:project": "tsx src/tools/send-project-update.ts",
     "test": "vitest"

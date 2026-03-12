@@ -13,18 +13,31 @@ import {
   mplTokenMetadata,
 } from "@metaplex-foundation/mpl-token-metadata";
 import {
+  getAssociatedTokenAddressSync,
+  getOrCreateAssociatedTokenAccount,
+  transfer,
+} from "@solana/spl-token";
+import {
   generateSigner,
   keypairIdentity,
   percentAmount,
   publicKey,
 } from "@metaplex-foundation/umi";
-import { connection, loadKeypair } from "../shared/config.js";
+import { Connection, PublicKey } from "@solana/web3.js";
+import { connection, loadKeypair, STAMP_RUNTIME } from "../shared/config.js";
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
 
 interface StampArgs {
   name: string;
   uri: string;
   recipient?: string;
+}
+
+export interface MintStampResult {
+  mintAddress: string;
+  recipient?: string;
+  transferSignature?: string;
 }
 
 function parseArgs(): StampArgs {
@@ -44,22 +57,48 @@ function parseArgs(): StampArgs {
   return { name: map.name, uri: map.uri, recipient: map.recipient };
 }
 
-async function main() {
-  const { name, uri, recipient } = parseArgs();
-
-  console.log(`🎟️  Minting Freeland Stamp: "${name}"`);
-  console.log("────────────────────────────────────────");
-
-  // Load collection info
-  const collectionInfoPath = "./keys/collection-info.json";
+function loadCollectionInfo(): { symbol: string; collectionMint: string } {
+  const collectionInfoPath = STAMP_RUNTIME.collectionInfoPath;
   if (!fs.existsSync(collectionInfoPath)) {
     throw new Error(
-      "Collection not found. Run `npx tsx src/nft/deploy.ts` first.",
+      `Collection info not found at "${collectionInfoPath}". Run \`npx tsx src/nft/deploy.ts\` first.`,
     );
   }
-  const collectionInfo = JSON.parse(
-    fs.readFileSync(collectionInfoPath, "utf-8"),
+  return JSON.parse(fs.readFileSync(collectionInfoPath, "utf-8")) as {
+    symbol: string;
+    collectionMint: string;
+  };
+}
+
+async function transferMintToRecipient(input: {
+  connection: Connection;
+  mintAddress: string;
+  ownerKeypair: ReturnType<typeof loadKeypair>;
+  recipient: string;
+}): Promise<string> {
+  const mintPubkey = new PublicKey(input.mintAddress);
+  const recipientPubkey = new PublicKey(input.recipient);
+  const sourceAta = getAssociatedTokenAddressSync(mintPubkey, input.ownerKeypair.publicKey);
+  const destination = await getOrCreateAssociatedTokenAccount(
+    input.connection,
+    input.ownerKeypair,
+    mintPubkey,
+    recipientPubkey,
   );
+
+  return transfer(
+    input.connection,
+    input.ownerKeypair,
+    sourceAta,
+    destination.address,
+    input.ownerKeypair,
+    1n,
+  );
+}
+
+export async function mintStamp(input: StampArgs): Promise<MintStampResult> {
+  const { name, uri, recipient } = input;
+  const collectionInfo = loadCollectionInfo();
 
   const solanaKeypair = loadKeypair();
   const umi = createUmi(connection.rpcEndpoint).use(mplTokenMetadata());
@@ -84,21 +123,50 @@ async function main() {
     },
   }).sendAndConfirm(umi);
 
-  console.log(`✅ Stamp minted: ${stampMint.publicKey}`);
+  const mintAddress = stampMint.publicKey.toString();
+  let transferSignature: string | undefined;
 
   if (recipient) {
-    console.log(`📬 Transfer to recipient: ${recipient}`);
-    // TODO: implement SPL token transfer to recipient
-    console.log("   (Transfer not yet implemented — stamp is in deployer wallet)");
+    transferSignature = await transferMintToRecipient({
+      connection,
+      mintAddress,
+      ownerKeypair: solanaKeypair,
+      recipient,
+    });
+  }
+
+  return {
+    mintAddress,
+    recipient,
+    transferSignature,
+  };
+}
+
+async function main() {
+  const { name, uri, recipient } = parseArgs();
+
+  console.log(`🎟️  Minting Freeland Stamp: "${name}"`);
+  console.log("────────────────────────────────────────");
+
+  const result = await mintStamp({ name, uri, recipient });
+
+  console.log(`✅ Stamp minted: ${result.mintAddress}`);
+  if (result.recipient) {
+    console.log(`📬 Transferred to recipient: ${result.recipient}`);
+    if (result.transferSignature) {
+      console.log(`🔏 Transfer signature: ${result.transferSignature}`);
+    }
   }
 
   console.log();
-  console.log(`  Mint     : ${stampMint.publicKey}`);
+  console.log(`  Mint     : ${result.mintAddress}`);
   console.log(`  Name     : ${name}`);
   console.log(`  Metadata : ${uri}`);
 }
 
-main().catch((err) => {
-  console.error("❌ Stamp minting failed:", err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error("❌ Stamp minting failed:", err);
+    process.exit(1);
+  });
+}

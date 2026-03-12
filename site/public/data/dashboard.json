@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-05T09:00:08.249Z",
+  "generatedAt": "2026-03-09T23:05:46.297Z",
   "stats": {
     "treasuryBalanceSOL": 1,
     "solRaised": 0,
@@ -13,9 +13,9 @@
     "address": "6J8jeMFpLCEDUjzUGvczMRsuNw1Aeg1D3qFvMP6SCtcm",
     "balanceSOL": 1,
     "balanceLamports": 1000000000,
-    "rpcEndpoint": "https://api.mainnet-beta.solana.com",
-    "cluster": "mainnet-beta",
-    "explorerUrl": "https://explorer.solana.com/address/6J8jeMFpLCEDUjzUGvczMRsuNw1Aeg1D3qFvMP6SCtcm"
+    "rpcEndpoint": "https://api.devnet.solana.com",
+    "cluster": "devnet",
+    "explorerUrl": "https://explorer.solana.com/address/6J8jeMFpLCEDUjzUGvczMRsuNw1Aeg1D3qFvMP6SCtcm?cluster=devnet"
   },
   "campaigns": [],
   "portfolio": {
@@ -49,7 +49,7 @@
     "multisigConfigured": true,
     "mintAuthorityStatus": "unknown",
     "mintAuthority": null,
-    "daemonEnabled": false,
+    "daemonEnabled": true,
     "gitignoreProtectsEnv": true,
     "gitignoreProtectsKeys": true
   }

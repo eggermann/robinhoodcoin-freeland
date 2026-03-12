@@ -1,12 +1,58 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import Link from "next/link";
 import { db } from "../lib/db";
 import { isDatabaseUnavailableError } from "../lib/db-errors";
 import { isVerifiedParcel } from "../lib/parcels";
+import WaitlistForm from "./WaitlistForm";
 
 export const dynamic = "force-dynamic";
 
+type DashboardCampaign = {
+  id: string;
+  name: string;
+  tier: string;
+  minted: number;
+  maxSupply: number;
+  raisedSOL: number;
+  goalSOL: number;
+  percentFunded: number;
+  percentMinted: number;
+  active: boolean;
+};
+
+type DashboardSnapshot = {
+  generatedAt?: string;
+  stats?: {
+    activeCampaigns?: number;
+    stampsMinted?: number;
+  };
+  campaigns?: DashboardCampaign[];
+};
+
+async function loadDashboardSnapshot(): Promise<DashboardSnapshot | null> {
+  const cwd = process.cwd();
+  const root = path.resolve(cwd, "..", "..");
+  const candidates = [
+    path.join(root, "site", "public", "data", "dashboard.json"),
+    path.join(cwd, "site", "public", "data", "dashboard.json"),
+  ];
+
+  for (const filePath of candidates) {
+    try {
+      const raw = await fs.readFile(filePath, "utf8");
+      return JSON.parse(raw) as DashboardSnapshot;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 export default async function HomePage() {
   const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL ?? "https://t.me/robinhoodcoin";
+  const botUrl = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/RobinHoodCoinBot";
   const paypalSupportUrl = process.env.NEXT_PUBLIC_PAYPAL_SUPPORT_URL ?? "";
   let trackedLeads = 0;
   let topParcel: { score: number | null } | null = null;
@@ -21,6 +67,8 @@ export default async function HomePage() {
     priceUsd: number | null;
   }> = [];
   let parcelDataUnavailable = false;
+  const dashboard = await loadDashboardSnapshot();
+  const activeCampaigns = (dashboard?.campaigns ?? []).filter((campaign) => campaign.active);
 
   try {
     [trackedLeads, topParcel, cheapestParcel, shortlist] = await Promise.all([
@@ -146,6 +194,21 @@ export default async function HomePage() {
           >
             Join Telegram
           </a>
+          <a
+            href={botUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              border: "1px solid #fcd34d",
+              color: "#fcd34d",
+              padding: "12px 22px",
+              borderRadius: 10,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Talk to Soul Bot
+          </a>
         </div>
       </section>
 
@@ -153,7 +216,24 @@ export default async function HomePage() {
         <StatCard label="Tracked Leads" value={String(trackedLeads)} color="#fcd34d" />
         <StatCard label="Top Score" value={topParcel?.score?.toString() ?? "?"} color="#4ade80" />
         <StatCard label="Lowest Known Price" value={`$${cheapestParcel?.priceUsd?.toLocaleString() ?? "?"}`} color="#60a5fa" />
+        <StatCard label="Active Campaigns" value={String(dashboard?.stats?.activeCampaigns ?? activeCampaigns.length)} color="#a78bfa" />
+        <StatCard label="Stamps Minted" value={String(dashboard?.stats?.stampsMinted ?? 0)} color="#f472b6" />
         <StatCard label="Platform" value={parcelDataUnavailable ? "Degraded" : "Live"} color="#f472b6" />
+      </section>
+
+      <section
+        style={{
+          borderRadius: 14,
+          border: "1px solid #334155",
+          background: "#101725",
+          padding: 22,
+        }}
+      >
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Campaign Waitlist</h2>
+        <p style={{ marginTop: 0, color: "#cbd5e1", maxWidth: 860 }}>
+          Collectors, donors, builders, and early supporters can register here for first-parcel updates, stamp drops, and public movement announcements.
+        </p>
+        <WaitlistForm source="homepage" />
       </section>
 
       {parcelDataUnavailable ? (
@@ -402,6 +482,22 @@ export default async function HomePage() {
           >
             Join Community Chat
           </a>
+          <a
+            href={botUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: "inline-block",
+              border: "1px solid #fcd34d",
+              color: "#fcd34d",
+              padding: "10px 16px",
+              borderRadius: 10,
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            Open Community Bot
+          </a>
           <Link
             href="/movement"
             style={{
@@ -445,6 +541,9 @@ export default async function HomePage() {
         <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Freeland Stamps</h2>
         <p style={{ color: "#9ca3af", marginTop: 0 }}>
           Freeland Stamps are the collector-facing funding rail for parcels. They should connect minting, public support, social identity, and governance context around real land campaigns.
+        </p>
+        <p style={{ color: "#cbd5e1", marginTop: 0 }}>
+          Current status: campaign discovery is live, while full public checkout and wallet-delivered mint settlement are still being tightened up. Follow updates through the waitlist, the bot, and the community chat.
         </p>
         <div style={{ marginBottom: 14, border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
           <h3 style={{ marginTop: 0, color: "#fcd34d" }}>How Stamps and RobinHoodCoin Fit Together</h3>
@@ -496,12 +595,56 @@ export default async function HomePage() {
 
         <div style={{ marginTop: 18, border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
           <h3 style={{ marginTop: 0, color: "#fcd34d" }}>Active Campaigns</h3>
-          <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
-            No public stamp sale is live yet. The minting machinery exists, but the community-facing campaign layer still needs tighter rollout and storytelling.
-          </p>
-          <p style={{ margin: 0, color: "#cbd5e1" }}>
-            Next milestone: launch a parcel-linked stamp campaign that clearly shows target land, funding goal, minted supply, collector rewards, and discussion flow.
-          </p>
+          {activeCampaigns.length === 0 ? (
+            <>
+              <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
+                The current bot dashboard snapshot reports zero active campaigns.
+              </p>
+              <p style={{ margin: 0, color: "#cbd5e1" }}>
+                The campaign feed will populate here automatically as soon as the bot marks campaigns active.
+              </p>
+            </>
+          ) : (
+            <>
+              <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>
+                Live from the bot dashboard. Last update: {dashboard?.generatedAt ?? "unknown"}.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px,1fr))", gap: 12 }}>
+                {activeCampaigns.slice(0, 6).map((campaign) => (
+                  <article key={campaign.id} style={{ border: "1px solid #334155", borderRadius: 12, padding: 12, background: "#111827" }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                      <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#173425", color: "#86efac", fontSize: 12, fontWeight: 700 }}>
+                        {campaign.tier.toUpperCase()}
+                      </span>
+                      <span style={{ display: "inline-flex", padding: "4px 8px", borderRadius: 999, background: "#1f2937", color: "#cbd5e1", fontSize: 12 }}>
+                        {campaign.id}
+                      </span>
+                    </div>
+                    <h4 style={{ margin: "0 0 6px", fontSize: 16 }}>{campaign.name}</h4>
+                    <p style={{ margin: "0 0 8px", color: "#94a3b8", fontSize: 14 }}>
+                      {campaign.maxSupply > 0
+                        ? `${campaign.minted.toLocaleString()} / ${campaign.maxSupply.toLocaleString()} minted`
+                        : `${campaign.minted.toLocaleString()} minted`}
+                    </p>
+                    <div style={{ height: 8, borderRadius: 999, background: "#1f2937", overflow: "hidden", marginBottom: 8 }}>
+                      <div style={{ width: `${Math.max(0, Math.min(100, campaign.percentFunded))}%`, height: "100%", background: "linear-gradient(90deg, #4caf50, #fcd34d)" }} />
+                    </div>
+                    <p style={{ margin: 0, color: "#cbd5e1", fontSize: 14 }}>
+                      {campaign.raisedSOL.toFixed(2)} / {campaign.goalSOL.toFixed(2)} SOL raised
+                    </p>
+                    <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 13 }}>
+                      {campaign.percentFunded}% funded • {campaign.percentMinted}% minted
+                    </p>
+                  </article>
+                ))}
+              </div>
+              {activeCampaigns.length > 6 ? (
+                <p style={{ margin: "12px 0 0", color: "#94a3b8" }}>
+                  Showing 6 of {activeCampaigns.length} active campaigns.
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
 
         <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 12 }}>
@@ -510,9 +653,14 @@ export default async function HomePage() {
             <p style={{ margin: "0 0 10px", color: "#94a3b8" }}>
               Supporters should be able to collect stamps, discuss parcels, and follow the social life of each campaign in one connected flow.
             </p>
-            <a href={communityUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
-              Open Community Chat →
-            </a>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a href={communityUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+                Open Community Chat →
+              </a>
+              <a href={botUrl} target="_blank" rel="noreferrer" style={{ color: "#86efac", textDecoration: "none", fontWeight: 700 }}>
+                Open Soul Bot →
+              </a>
+            </div>
           </div>
           <div style={{ border: "1px solid #334155", borderRadius: 12, padding: 14, background: "#0f172a" }}>
             <h4 style={{ marginTop: 0 }}>Land Objects Gallery</h4>
@@ -542,9 +690,14 @@ export default async function HomePage() {
                 Support via PayPal →
               </a>
             ) : (
-              <a href={communityUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
-                Request support link in chat →
-              </a>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <a href={communityUrl} target="_blank" rel="noreferrer" style={{ color: "#fcd34d", textDecoration: "none", fontWeight: 700 }}>
+                  Request support link in chat →
+                </a>
+                <a href={botUrl} target="_blank" rel="noreferrer" style={{ color: "#86efac", textDecoration: "none", fontWeight: 700 }}>
+                  Ask the bot →
+                </a>
+              </div>
             )}
           </div>
         </div>
@@ -575,7 +728,7 @@ export default async function HomePage() {
             </article>
           ))}
           {shortlist.filter(isVerifiedParcel).length === 0 ? (
-            <p style={{ color: "#9ca3af" }}>No parcel-level listings synced yet. Scout leads are still visible in the portfolio feed.</p>
+            <p style={{ color: "#9ca3af" }}>No verified parcel cards are available right now. Lane leads remain visible on the portfolio boards.</p>
           ) : null}
         </div>
         <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>

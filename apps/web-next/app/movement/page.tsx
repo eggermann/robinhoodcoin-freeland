@@ -48,14 +48,13 @@ function summarizeEntry(entry: any): string {
   if (typeof entry.summary === "string") return entry.summary;
   if (typeof entry.message === "string") return entry.message;
   if (typeof entry.error === "string") return `error: ${entry.error}`;
-  if (typeof entry.ref === "string") return `ask failure ${entry.ref}`;
   if (typeof entry.url === "string") {
     const status = entry.status ? ` (${entry.status})` : "";
     return `url probe${status}: ${entry.url}`;
   }
   if (typeof entry.action === "string") return entry.action;
   if (typeof entry.type === "string") return entry.type;
-  return JSON.stringify(entry).slice(0, 140);
+  return "Structured automation event recorded.";
 }
 
 function compactFileLabel(filePath: string): string {
@@ -76,8 +75,6 @@ async function loadMovementEntries(): Promise<MovementEntry[]> {
     path.join(dataRoot, "openclaw-autonomy", "pr.jsonl"),
     path.join(dataRoot, "openclaw-fusion", "cycles.jsonl"),
     path.join(dataRoot, "land-search", "autonomous-scout-log.jsonl"),
-    path.join(dataRoot, "bot", "ask-failures.jsonl"),
-    path.join(dataRoot, "bot", "url-probes.jsonl"),
     path.join(dataRoot, "finance-monitor", "report-log.jsonl"),
   ];
 
@@ -114,35 +111,11 @@ async function loadMovementEntries(): Promise<MovementEntry[]> {
     .slice(0, 40);
 }
 
-async function loadLogTail(): Promise<{ source: string; line: string }[]> {
-  const home = process.env.HOME ?? "";
-  const candidates = [
-    process.env.OPENCLAW_GATEWAY_LOG,
-    process.env.ROBINHOODCOIN_BOT_ERR_LOG,
-    home ? path.join(home, "logs", "openclaw-gateway.err.log") : "",
-    home ? path.join(home, "logs", "robinhoodcoin", "bot.err.log") : "",
-    "/home/pi/logs/openclaw-gateway.err.log",
-  ].filter(Boolean) as string[];
-
-  const rows: { source: string; line: string }[] = [];
-
-  for (const filePath of new Set(candidates)) {
-    const lines = await readTailLines(filePath, 140_000, 120);
-    if (lines.length === 0) continue;
-    for (const line of lines.slice(-20)) {
-      rows.push({ source: compactFileLabel(filePath), line });
-    }
-  }
-
-  return rows.slice(-30);
-}
-
 export default async function MovementPage() {
   const cwd = process.cwd();
   const root = path.resolve(cwd, "..", "..");
   const dashboard = await readJson(path.join(root, "site", "public", "data", "dashboard.json"));
   const movementEntries = await loadMovementEntries();
-  const logTail = await loadLogTail();
 
   return (
     <section style={{ display: "grid", gap: 20 }}>
@@ -177,8 +150,11 @@ export default async function MovementPage() {
 
       <section style={{ border: "1px solid #1f2937", borderRadius: 14, padding: 18, background: "#0b1210" }}>
         <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Movement Feed</h2>
+        <p style={{ margin: "0 0 12px", color: "#94a3b8" }}>
+          Public view only: high-level automation summaries stay visible here, while raw chat failures and operator log tails stay private.
+        </p>
         {movementEntries.length === 0 ? (
-          <p style={{ color: "#94a3b8" }}>No JSONL movement entries yet. Waiting for automation or bot logs.</p>
+          <p style={{ color: "#94a3b8" }}>No readable JSONL movement events are available on this host right now.</p>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
             {movementEntries.map((entry, index) => (
@@ -195,18 +171,10 @@ export default async function MovementPage() {
       </section>
 
       <section style={{ border: "1px solid #1f2937", borderRadius: 14, padding: 18, background: "#0f172a" }}>
-        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Recent Log Tail</h2>
-        {logTail.length === 0 ? (
-          <p style={{ color: "#94a3b8" }}>No gateway/bot log lines reachable from this host.</p>
-        ) : (
-          <div style={{ display: "grid", gap: 8 }}>
-            {logTail.map((row, index) => (
-              <div key={`${row.source}-${index}`} style={{ fontSize: 12, color: "#d1d5db" }}>
-                <span style={{ color: "#fbbf24" }}>[{row.source}]</span> {row.line}
-              </div>
-            ))}
-          </div>
-        )}
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Diagnostics Policy</h2>
+        <p style={{ margin: 0, color: "#94a3b8" }}>
+          Internal operator diagnostics now stay off the public page. Public visitors see campaign pulse, scout state, and safe automation summaries instead of raw bot prompts, stack traces, or private runtime details.
+        </p>
       </section>
     </section>
   );

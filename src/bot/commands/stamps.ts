@@ -1,4 +1,5 @@
 import type { Context } from "grammy";
+import { PublicKey } from "@solana/web3.js";
 import {
   getActiveCampaigns,
   getCampaign,
@@ -7,10 +8,14 @@ import {
   STAMP_TIERS,
 } from "../../nft/stamp-tiers.js";
 import { createLandStampBatch, listSelectableLands } from "../../nft/land-stamp-factory.js";
+import { createCampaignStampMetadata } from "../../nft/stamp-metadata.js";
+import { mintStamp } from "../../nft/mint-stamp.js";
 import {
+  clearMemberWallet,
   formatMemberProfile,
   getMemberProfile,
   recordStampMintForMember,
+  setMemberWallet,
 } from "../../soul/member-ledger.js";
 import { replyPlain } from "../telegram-reply.js";
 
@@ -175,14 +180,50 @@ export async function handleStampMint(ctx: Context): Promise<void> {
     return;
   }
 
+  const userId = ctx.from?.id?.toString() ?? "unknown-user";
+  const currentProfile = getMemberProfile(userId);
+  if (!currentProfile?.walletAddress) {
+    await replyPlain(
+      ctx,
+      "❌ No wallet registered for this member. Use `/wallet <solana-address>` before minting so the stamp can be delivered on-chain.",
+    );
+    return;
+  }
+
+  let recipientWallet = "";
+  try {
+    recipientWallet = new PublicKey(currentProfile.walletAddress).toBase58();
+  } catch {
+    await replyPlain(
+      ctx,
+      "❌ Your saved wallet is not a valid Solana address anymore. Use `/wallet <solana-address>` to fix it.",
+    );
+    return;
+  }
+
   let minted = 0;
   let latest = campaign;
   let mintError: string | null = null;
+  const mintAddresses: string[] = [];
+  const metadataUris: string[] = [];
 
   for (let i = 0; i < qty; i++) {
     try {
+      const nextSerial = latest.minted + 1;
+      const metadata = createCampaignStampMetadata({
+        campaign: latest,
+        serial: nextSerial,
+        recipient: recipientWallet,
+      });
+      const result = await mintStamp({
+        name: String(metadata.metadata.name ?? `${latest.name} #${nextSerial}`),
+        uri: metadata.uri,
+        recipient: recipientWallet,
+      });
       latest = recordMint(campaignId);
       minted += 1;
+      mintAddresses.push(result.mintAddress);
+      metadataUris.push(metadata.uri);
     } catch (err) {
       mintError = err instanceof Error ? err.message : String(err);
       break;
@@ -194,7 +235,6 @@ export async function handleStampMint(ctx: Context): Promise<void> {
     return;
   }
 
-  const userId = ctx.from?.id?.toString() ?? "unknown-user";
   const profile = recordStampMintForMember({
     userId,
     campaignId,
@@ -208,19 +248,73 @@ export async function handleStampMint(ctx: Context): Promise<void> {
   const contribution = (latest.priceSOL * minted).toFixed(4);
 
   await ctx.reply(
-    `✅ Mint recorded.
+    `✅ Stamp mint completed.
 
 Campaign: ${latest.name} (\`${latest.id}\`)
 Tier: ${latest.tier}
+Wallet: ${recipientWallet}
 Minted now: ${minted}
 Contribution: ${contribution} SOL
-Raised: ${latest.raisedSOL.toFixed(4)} / ${latest.goalSOL.toFixed(4)} SOL
+Raised: ${latest.raisedSOL.toFixed(4)} / ${latest.goalSOL.toFixed(4)} SOL${
+      mintAddresses.length > 0
+        ? `\n\nMint addresses:\n${mintAddresses.map((address, index) => `  ${index + 1}. ${address}`).join("\n")}\n\nMetadata URIs:\n${metadataUris.map((uri, index) => `  ${index + 1}. ${uri}`).join("\n")}`
+        : ""
+    }
 
 Your governance weight: ${profile.governanceWeight}
 Your total contribution: ${profile.totalContributedSOL.toFixed(4)} SOL${
       mintError ? `\n\n⚠️ Partial mint: ${mintError}` : ""
     }`,
   );
+}
+
+export async function handleWallet(ctx: Context): Promise<void> {
+  const text = ctx.message?.text ?? "";
+  const args = text.replace(/^\/wallet\s*/, "").trim();
+  const userId = ctx.from?.id?.toString() ?? "unknown-user";
+  const username = ctx.from?.username ?? undefined;
+  const displayName = [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(" ").trim() || undefined;
+
+  if (!args) {
+    const profile = getMemberProfile(userId);
+    await replyPlain(
+      ctx,
+      profile?.walletAddress
+        ? `👛 Registered wallet: ${profile.walletAddress}\n\nUse \`/wallet <solana-address>\` to replace it or \`/wallet clear\` to remove it.`
+        : "👛 No wallet registered yet.\n\nUse `/wallet <solana-address>` to link your Solana wallet for voting and on-chain stamp delivery.",
+    );
+    return;
+  }
+
+  if (args.toLowerCase() === "clear") {
+    const profile = clearMemberWallet({
+      userId,
+      username,
+      displayName,
+    });
+    await replyPlain(
+      ctx,
+      `🧹 Wallet removed.\n\nCurrent wallet: ${profile.walletAddress ?? "not set"}`,
+    );
+    return;
+  }
+
+  try {
+    const walletAddress = new PublicKey(args).toBase58();
+    const profile = setMemberWallet({
+      userId,
+      walletAddress,
+      username,
+      displayName,
+    });
+
+    await replyPlain(
+      ctx,
+      `✅ Wallet linked.\n\nWallet: ${profile.walletAddress}\nThis wallet will be used for token-gated voting and on-chain stamp delivery.`,
+    );
+  } catch {
+    await replyPlain(ctx, "❌ That is not a valid Solana public key. Use a base58 wallet address.");
+  }
 }
 
 export async function handleMember(ctx: Context): Promise<void> {

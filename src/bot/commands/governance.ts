@@ -10,6 +10,7 @@ import {
   deleteProposal,
   type ProposalType,
 } from "../../dao/governance.js";
+import { assertMemberCanVote } from "../../dao/voter-eligibility.js";
 import { createLandStampBatch, findSelectableLandInText } from "../../nft/land-stamp-factory.js";
 import { setCampaignActive } from "../../nft/stamp-tiers.js";
 import { recordGovernanceVoteForMember } from "../../soul/member-ledger.js";
@@ -283,6 +284,9 @@ export async function handleVote(ctx: Context): Promise<void> {
   const voter = ctx.from?.id?.toString() ?? "anonymous";
 
   try {
+    const eligibility = ctx.from?.id
+      ? await assertMemberCanVote(ctx.from.id.toString())
+      : null;
     const proposal = vote(proposalId, direction, voter);
     if (ctx.from?.id) {
       recordGovernanceVoteForMember({
@@ -300,7 +304,11 @@ export async function handleVote(ctx: Context): Promise<void> {
       ctx,
       `✅ Vote recorded: *${direction}* on "${proposal.title}"
 
-📊 Current tally: 👍 ${proposal.votesFor} (${forPct}%) / 👎 ${proposal.votesAgainst} (${100 - forPct}%)`,
+📊 Current tally: 👍 ${proposal.votesFor} (${forPct}%) / 👎 ${proposal.votesAgainst} (${100 - forPct}%)${
+        eligibility?.walletAddress
+          ? `\n🔐 Verified wallet: ${eligibility.walletAddress}\n🪙 ${eligibility.balance.toFixed(6)} voting tokens detected`
+          : ""
+      }`,
     );
   } catch (err) {
     await ctx.reply(`❌ ${err}`);

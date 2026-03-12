@@ -62,7 +62,7 @@ export default async function LandPage() {
       <p style={{ color: "#94a3b8", margin: 0 }}>
         {verifiedParcels.length > 0
           ? "This gallery is now driven by live parcel-level records from Prisma."
-          : "No parcel-level listings are synced yet. Run the scout pipeline or seed the DB to populate this gallery."}
+          : "No verified parcel rows are available in Prisma right now. Regional lane leads remain visible on the portfolio page."}
       </p>
     </section>
   );

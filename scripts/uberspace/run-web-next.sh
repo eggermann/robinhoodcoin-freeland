@@ -30,6 +30,6 @@ if [[ -z "${NODE_BIN}" ]]; then
 fi
 
 PORT="${PORT:-3200}"
-DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:./prisma/dev.db}}"
+DATABASE_URL="${WEB_NEXT_DATABASE_URL:-${DATABASE_URL:-file:${APP_DIR}/prisma/dev.db}}"
 
 exec env DATABASE_URL="${DATABASE_URL}" PORT="${PORT}" "${NODE_BIN}" ./node_modules/next/dist/bin/next start -p "${PORT}"

@@ -3,6 +3,9 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export default function SoulPage() {
+  const communityUrl = process.env.NEXT_PUBLIC_COMMUNITY_URL ?? "https://t.me/robinhoodcoin";
+  const botUrl = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/RobinHoodCoinBot";
+
   return (
     <section style={{ display: "grid", gap: 20 }}>
       <header style={{ borderRadius: 16, border: "1px solid #2a3a2e", padding: 24, background: "#0f1a15" }}>
@@ -36,7 +39,7 @@ export default function SoulPage() {
               Back to Main Site
             </Link>
             <a
-              href="https://t.me/RobinHoodCoinBot"
+              href={botUrl}
               target="_blank"
               rel="noreferrer"
               style={{
@@ -48,7 +51,22 @@ export default function SoulPage() {
                 textDecoration: "none",
               }}
             >
-              Open Telegram Bot
+              Open Soul Bot
+            </a>
+            <a
+              href={communityUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                border: "1px solid #fcd34d",
+                color: "#fcd34d",
+                padding: "10px 18px",
+                borderRadius: 10,
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              Join Community Chat
             </a>
           </div>
         </div>
@@ -57,17 +75,19 @@ export default function SoulPage() {
       <section style={{ border: "1px solid #1f2937", borderRadius: 14, padding: 18, background: "#0b1210" }}>
         <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Operating Rules</h2>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-          <RuleCard title="1) Fix first, narrate second" body="Prefer concrete checks, scripts, and commits over long explanations." />
-          <RuleCard title="2) Preserve access" body="Any gateway/SSH/firewall change must keep remote access safe and reversible." />
-          <RuleCard title="3) Keep it local-first" body="Default to loopback + token auth for gateway usage unless explicitly hardened for remote use." />
+          <RuleCard title="1) Mission first" body="The Soul exists to support land stewardship, coordination, and public accountability." />
+          <RuleCard title="2) Human-led governance" body="Major decisions belong to the community, the treasury rules, and the DAO process." />
+          <RuleCard title="3) Practical support" body="Sherwood helps with operations, scouting, updates, and movement coordination." />
         </div>
       </section>
 
-      <section style={{ border: "1px solid #1f2937", borderRadius: 14, padding: 18, background: "#0f172a" }}>
-        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Runbook Commands</h2>
-        <CommandCard command="npm run check:openclaw" description="Runs OpenClaw status + doctor with stable Node 22 path and local-safe env handling." />
-        <CommandCard command="npm run build:web" description="Builds campaign pages and publishes fresh static output under site/dist." />
-        <CommandCard command="git status -sb" description="Quick sanity check before commits and deploys." />
+      <section style={{ border: "1px solid #1f2937", borderRadius: 14, padding: 18, background: "#111827" }}>
+        <h2 style={{ marginTop: 0, color: "#fcd34d" }}>Current Public Actions</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <RuleCard title="Ask the bot" body="Use the public Telegram bot for mission questions, treasury lookups, land lists, and proposal status." />
+          <RuleCard title="Watch movement status" body="The public movement page now shows safe high-level runtime summaries instead of raw operator logs." />
+          <RuleCard title="Join the loop" body="Use the homepage waitlist to get campaign, stamp, and parcel updates without hunting through chat." />
+        </div>
       </section>
     </section>
   );
@@ -79,16 +99,5 @@ function RuleCard({ title, body }: { title: string; body: string }) {
       <h3 style={{ margin: "0 0 6px" }}>{title}</h3>
       <p style={{ margin: 0, color: "#94a3b8" }}>{body}</p>
     </article>
-  );
-}
-
-function CommandCard({ command, description }: { command: string; description: string }) {
-  return (
-    <div style={{ border: "1px solid #1f2937", borderRadius: 12, padding: 14, background: "#0b1210", marginBottom: 12 }}>
-      <p style={{ margin: "0 0 6px", fontFamily: "ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, monospace", color: "#fcd34d" }}>
-        {command}
-      </p>
-      <p style={{ margin: 0, color: "#94a3b8" }}>{description}</p>
-    </div>
   );
 }

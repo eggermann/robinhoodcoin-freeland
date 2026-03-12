@@ -33,6 +33,12 @@ export type ProposalType =
   | "parameter_change"
   | "general";
 
+export interface ProposalVoteRecord {
+  voterId: string;
+  direction: "for" | "against";
+  votedAt: string;
+}
+
 export interface Proposal {
   id: string;
   title: string;
@@ -44,6 +50,7 @@ export interface Proposal {
   proposer: string; // public key
   votesFor: number;
   votesAgainst: number;
+  voteRecords: ProposalVoteRecord[];
   /** On-chain transaction to execute if approved */
   executionTx?: string;
   /** For land_purchase: target details */
@@ -65,8 +72,21 @@ function ensureDir(): void {
   fs.mkdirSync(PROPOSALS_DIR, { recursive: true });
 }
 
+function normalizeProposal(proposal: Proposal): Proposal {
+  return {
+    ...proposal,
+    voteRecords: Array.isArray(proposal.voteRecords)
+      ? proposal.voteRecords.filter((record): record is ProposalVoteRecord => (
+        typeof record?.voterId === "string"
+        && (record?.direction === "for" || record?.direction === "against")
+        && typeof record?.votedAt === "string"
+      ))
+      : [],
+  };
+}
+
 export function createProposal(
-  proposal: Omit<Proposal, "id" | "status" | "createdAt" | "votesFor" | "votesAgainst">,
+  proposal: Omit<Proposal, "id" | "status" | "createdAt" | "votesFor" | "votesAgainst" | "voteRecords">,
 ): Proposal {
   ensureDir();
 
@@ -78,6 +98,7 @@ export function createProposal(
     createdAt: new Date().toISOString(),
     votesFor: 0,
     votesAgainst: 0,
+    voteRecords: [],
   };
 
   const filePath = path.join(PROPOSALS_DIR, `${id}.json`);
@@ -89,7 +110,7 @@ export function createProposal(
 export function getProposal(id: string): Proposal | null {
   const filePath = path.join(PROPOSALS_DIR, `${id}.json`);
   if (!fs.existsSync(filePath)) return null;
-  return JSON.parse(fs.readFileSync(filePath, "utf-8")) as Proposal;
+  return normalizeProposal(JSON.parse(fs.readFileSync(filePath, "utf-8")) as Proposal);
 }
 
 export function updateProposal(
@@ -100,7 +121,7 @@ export function updateProposal(
   if (!proposal) throw new Error(`Proposal ${id} not found`);
 
   const next: Proposal = {
-    ...proposal,
+    ...normalizeProposal(proposal),
     ...updates,
     landDetails: updates.landDetails
       ? {
@@ -127,7 +148,7 @@ export function listProposals(status?: ProposalStatus): Proposal[] {
   const files = fs.readdirSync(PROPOSALS_DIR).filter((f) => f.endsWith(".json"));
   const proposals = files.map((f) => {
     const raw = fs.readFileSync(path.join(PROPOSALS_DIR, f), "utf-8");
-    return JSON.parse(raw) as Proposal;
+    return normalizeProposal(JSON.parse(raw) as Proposal);
   });
 
   if (status) return proposals.filter((p) => p.status === status);
@@ -139,20 +160,30 @@ export function listProposals(status?: ProposalStatus): Proposal[] {
 export function vote(
   proposalId: string,
   direction: "for" | "against",
-  _voterPubkey: string,
+  voterId: string,
 ): Proposal {
   const proposal = getProposal(proposalId);
   if (!proposal) throw new Error(`Proposal ${proposalId} not found`);
   if (proposal.status !== "active") {
     throw new Error(`Proposal ${proposalId} is not active (status: ${proposal.status})`);
   }
+  if (proposal.closesAt && Date.parse(proposal.closesAt) < Date.now()) {
+    throw new Error(`Proposal ${proposalId} already closed at ${proposal.closesAt}`);
+  }
+  if (proposal.voteRecords.some((record) => record.voterId === voterId)) {
+    throw new Error(`Voter ${voterId} already voted on proposal ${proposalId}`);
+  }
 
-  // TODO: verify voter holds RHC tokens and hasn't voted yet
   if (direction === "for") {
     proposal.votesFor++;
   } else {
     proposal.votesAgainst++;
   }
+  proposal.voteRecords.push({
+    voterId,
+    direction,
+    votedAt: new Date().toISOString(),
+  });
 
   const filePath = path.join(PROPOSALS_DIR, `${proposalId}.json`);
   fs.writeFileSync(filePath, JSON.stringify(proposal, null, 2));

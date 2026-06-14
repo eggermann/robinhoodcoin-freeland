@@ -8,6 +8,7 @@ import {
   getProposal,
   type ProposalType,
 } from "../../dao/governance.js";
+import { escapeTelegramMarkdown } from "../telegram.js";
 
 /**
  * /propose — Create a new governance proposal
@@ -64,13 +65,15 @@ Example:
       proposer,
       closesAt: new Date(Date.now() + 7 * 24 * 3600_000).toISOString(), // 7 days default
     });
+    const safeTitle = escapeTelegramMarkdown(proposal.title);
+    const safeDescription = escapeTelegramMarkdown(proposal.description);
 
     await ctx.reply(
       `✅ *Proposal Created!*
 
-📋 *${proposal.title}*
+📋 *${safeTitle}*
 🏷️ Type: ${proposal.type}
-📝 ${proposal.description}
+📝 ${safeDescription}
 🆔 ID: \`${proposal.id}\`
 📊 Status: draft
 
@@ -135,7 +138,9 @@ export async function handleProposalDetail(ctx: Context): Promise<void> {
     return;
   }
 
-  let details = `📋 *${proposal.title}*
+  const safeTitle = escapeTelegramMarkdown(proposal.title);
+  const safeDescription = escapeTelegramMarkdown(proposal.description);
+  let details = `📋 *${safeTitle}*
 
 🆔 ID: \`${proposal.id}\`
 🏷️ Type: ${proposal.type}
@@ -147,7 +152,7 @@ export async function handleProposalDetail(ctx: Context): Promise<void> {
     details += `\n⏰ Closes: ${new Date(proposal.closesAt).toLocaleDateString()}`;
   }
 
-  details += `\n\n📝 ${proposal.description}`;
+  details += `\n\n📝 ${safeDescription}`;
 
   if (proposal.votesFor > 0 || proposal.votesAgainst > 0) {
     const total = proposal.votesFor + proposal.votesAgainst;
@@ -182,10 +187,11 @@ export async function handleActivate(ctx: Context): Promise<void> {
   try {
     const closesAt = new Date(Date.now() + 7 * 24 * 3600_000).toISOString();
     const proposal = activateProposal(id, closesAt);
+    const safeTitle = escapeTelegramMarkdown(proposal.title);
     await ctx.reply(
       `🗳️ *Voting is OPEN!*
 
-📋 *${proposal.title}*
+📋 *${safeTitle}*
 ⏰ Closes: ${new Date(closesAt).toLocaleDateString()}
 
 Cast your vote:
@@ -220,11 +226,12 @@ export async function handleVote(ctx: Context): Promise<void> {
 
   try {
     const proposal = vote(proposalId, direction, voter);
+    const safeTitle = escapeTelegramMarkdown(proposal.title);
     const total = proposal.votesFor + proposal.votesAgainst;
     const forPct = Math.round((proposal.votesFor / total) * 100);
 
     await ctx.reply(
-      `✅ Vote recorded: *${direction}* on "${proposal.title}"
+      `✅ Vote recorded: *${direction}* on "${safeTitle}"
 
 📊 Current tally: 👍 ${proposal.votesFor} (${forPct}%) / 👎 ${proposal.votesAgainst} (${100 - forPct}%)`,
       { parse_mode: "Markdown" },
@@ -248,11 +255,12 @@ export async function handleFinalize(ctx: Context): Promise<void> {
 
   try {
     const proposal = finalizeProposal(id);
+    const safeTitle = escapeTelegramMarkdown(proposal.title);
     const emoji = proposal.status === "approved" ? "✅" : "❌";
     await ctx.reply(
       `${emoji} *Proposal ${proposal.status.toUpperCase()}*
 
-📋 *${proposal.title}*
+📋 *${safeTitle}*
 📊 Final tally: 👍 ${proposal.votesFor} / 👎 ${proposal.votesAgainst}
 
 ${proposal.status === "approved"

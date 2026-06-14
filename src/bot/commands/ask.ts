@@ -26,10 +26,10 @@ export async function handleAsk(ctx: Context, question: string): Promise<void> {
     if (answer.length > 4000) {
       const parts = splitMessage(answer, 4000);
       for (const part of parts) {
-        await ctx.reply(part, { parse_mode: "Markdown" });
+        await ctx.reply(part);
       }
     } else {
-      await ctx.reply(answer, { parse_mode: "Markdown" });
+      await ctx.reply(answer);
     }
   } catch (err) {
     console.error("AI call failed:", err);

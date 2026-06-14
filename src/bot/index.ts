@@ -22,6 +22,7 @@
 
 import { Bot, Context, session, type SessionFlavor } from "grammy";
 import { TELEGRAM } from "../shared/config.js";
+import { escapeTelegramMarkdown } from "./telegram.js";
 
 // ── Command Handlers ─────────────────────────────────────
 import { handleStart } from "./commands/start.js";
@@ -119,7 +120,7 @@ function main() {
     for (const member of members) {
       if (member.is_bot) continue;
       const name = member.first_name ?? member.username ?? "friend";
-      const welcome = generatePersonalWelcome(name);
+      const welcome = generatePersonalWelcome(escapeTelegramMarkdown(name));
       await ctx.reply(welcome, { parse_mode: "Markdown" });
 
       // Track influence
@@ -171,9 +172,11 @@ function main() {
     const dueReminders = getDueReminders();
     for (const reminder of dueReminders) {
       try {
-        await bot.api.sendMessage(reminder.chatId, `⏰ *Reminder*: ${reminder.message}`, {
-          parse_mode: "Markdown",
-        });
+        await bot.api.sendMessage(
+          reminder.chatId,
+          `⏰ *Reminder*: ${escapeTelegramMarkdown(reminder.message)}`,
+          { parse_mode: "Markdown" },
+        );
         markReminderFired(reminder.id);
       } catch (err) {
         console.error(`Failed to send reminder ${reminder.id}:`, err);

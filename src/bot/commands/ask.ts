@@ -22,14 +22,9 @@ export async function handleAsk(ctx: Context, question: string): Promise<void> {
 
   try {
     const answer = await callAI(question);
-    // Telegram has a 4096 char limit
-    if (answer.length > 4000) {
-      const parts = splitMessage(answer, 4000);
-      for (const part of parts) {
-        await ctx.reply(part, { parse_mode: "Markdown" });
-      }
-    } else {
-      await ctx.reply(answer, { parse_mode: "Markdown" });
+    const parts = splitMessage(answer, 4000);
+    for (const part of parts) {
+      await replySafely(ctx, part);
     }
   } catch (err) {
     console.error("AI call failed:", err);
@@ -38,6 +33,14 @@ export async function handleAsk(ctx: Context, question: string): Promise<void> {
       return;
     }
     await ctx.reply("❌ Sorry, I couldn't process that right now. Try again later.");
+  }
+}
+
+async function replySafely(ctx: Context, text: string): Promise<void> {
+  try {
+    await ctx.reply(text, { parse_mode: "Markdown" });
+  } catch {
+    await ctx.reply(text);
   }
 }
 
